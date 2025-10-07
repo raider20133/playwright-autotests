@@ -1,0 +1,109 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - paragraph [ref=e7]: Pages / Leave Requests
+        - heading "Leave Requests" [level=6] [ref=e8]
+      - generic [ref=e9]:
+        - button [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+        - button [ref=e13] [cursor=pointer]:
+          - img [ref=e14]
+        - button [ref=e16] [cursor=pointer]:
+          - img [ref=e17]
+  - navigation "mailbox folders" [ref=e19]:
+    - generic [ref=e21]:
+      - generic [ref=e23]: Chronos
+      - list [ref=e24]:
+        - listitem [ref=e25]:
+          - button "Dashboard" [ref=e26] [cursor=pointer]:
+            - img [ref=e28]
+            - generic [ref=e31]: Dashboard
+        - listitem [ref=e32]:
+          - button "Leave Requests" [ref=e33] [cursor=pointer]:
+            - img [ref=e35]
+            - generic [ref=e38]: Leave Requests
+        - listitem [ref=e39]:
+          - button "Daily Meeting" [ref=e40] [cursor=pointer]:
+            - img [ref=e42]
+            - generic [ref=e45]: Daily Meeting
+        - listitem [ref=e46]:
+          - button "Checklist" [ref=e47] [cursor=pointer]:
+            - img [ref=e49]
+            - generic [ref=e52]: Checklist
+        - listitem [ref=e53]:
+          - button "Wish List" [ref=e54] [cursor=pointer]:
+            - img [ref=e56]
+            - generic [ref=e59]: Wish List
+        - listitem [ref=e60]:
+          - button "PDF Draw Tool" [ref=e61] [cursor=pointer]:
+            - img [ref=e63]
+            - generic [ref=e66]: PDF Draw Tool
+        - listitem [ref=e67]:
+          - button "Calendar" [ref=e68] [cursor=pointer]:
+            - img [ref=e70]
+            - generic [ref=e73]: Calendar
+  - main [ref=e74]:
+    - generic [ref=e79]:
+      - generic [ref=e82]:
+        - heading "New Leave Request" [level=6] [ref=e83]
+        - alert [ref=e84]:
+          - img [ref=e86]
+          - generic [ref=e88]: Leave request submitted successfully!
+        - generic [ref=e89]:
+          - generic [ref=e90]: Type
+          - generic [ref=e91]:
+            - combobox "Type" [ref=e92] [cursor=pointer]: Sick Leave
+            - textbox: sick
+            - img
+            - group:
+              - generic: Type
+        - generic [ref=e93]:
+          - generic [ref=e94]: Start Date
+          - generic [ref=e95]:
+            - textbox "Start Date" [ref=e96]
+            - group:
+              - generic: Start Date
+        - generic [ref=e97]:
+          - generic [ref=e98]: End Date
+          - generic [ref=e99]:
+            - textbox "End Date" [ref=e100]
+            - group:
+              - generic: End Date
+        - button "Submit" [active] [ref=e101] [cursor=pointer]: Submit
+      - separator [ref=e102]
+      - generic [ref=e103]:
+        - heading "My Requests" [level=6] [ref=e104]
+        - generic [ref=e105]:
+          - generic [ref=e108]:
+            - img [ref=e110]
+            - generic [ref=e112]:
+              - generic [ref=e113]: sick
+              - paragraph [ref=e114]: 10/7/2025 - 10/7/2025
+            - generic [ref=e117]: approved
+          - generic [ref=e118]:
+            - generic [ref=e120]:
+              - img [ref=e122]
+              - generic [ref=e124]:
+                - generic [ref=e125]: vacation
+                - paragraph [ref=e126]: 10/7/2025 - 10/7/2025
+              - generic [ref=e129]: pending
+            - separator [ref=e130]
+            - generic [ref=e131]:
+              - button "Reject" [ref=e132] [cursor=pointer]
+              - button "Approve" [ref=e133] [cursor=pointer]
+          - generic [ref=e134]:
+            - generic [ref=e136]:
+              - img [ref=e138]
+              - generic [ref=e140]:
+                - generic [ref=e141]: sick
+                - paragraph [ref=e142]: 10/7/2025 - 10/7/2025
+              - generic [ref=e145]: pending
+            - separator [ref=e146]
+            - generic [ref=e147]:
+              - button "Reject" [ref=e148] [cursor=pointer]
+              - button "Approve" [ref=e149] [cursor=pointer]
+```
