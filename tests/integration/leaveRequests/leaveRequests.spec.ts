@@ -66,7 +66,7 @@ async function chooseTypeOfRequest(page: Page, selector: string) {
     ]);
 }
 
-async function clickButtonStatus(page: Page, button: string) {
+async function clickButtonStatus(page: Page, button: string, status: string) {
     await Promise.all([
         page.waitForResponse(resp =>
             resp.url().includes('/api/leave') &&
@@ -75,6 +75,8 @@ async function clickButtonStatus(page: Page, button: string) {
         ),
         await page.locator(`button:text("${button}")`).last().click()
     ])
+    const lastCardLocator = page.locator('div.MuiCard-root').last().locator('.MuiChip-label');
+    await expect(lastCardLocator).toHaveText(status, {timeout: 5000});
 }
 
 async function getCardData(page: Page, index: number = 0) {
@@ -91,32 +93,46 @@ async function reCheckStatus(typeCard: string, typeStatus: string, requestType: 
     expect(typeStatus.toLowerCase()).toBe(status.toLowerCase());
 }
 
-test('Leave Requests - type Sick', async ({page}) => {
-    await page.goto('/')
-    await login
-        .signIn(username, password)
-    await gotoTabRequests(page)
-    await chooseTypeOfRequest(page, 'Sick Leave')
+test.beforeEach(async ({page}) => {
+    await page.goto('/');
+    await login.signIn(username, password);
+    await gotoTabRequests(page);
+});
 
+test('Leave Requests - type Sick', async ({page}) => {
+    await chooseTypeOfRequest(page, 'Sick Leave')
     const firstCard: { type: string, status: string } = await getCardData(page);
     await reCheckStatus(firstCard.type, firstCard.status, typeRequest.sick, statusType.pending)
-    await clickButtonStatus(page, 'APPROVE')
-
+    await clickButtonStatus(page, 'APPROVE', statusType.approved)
     const lastCard: { type: string, status: string } = await getCardData(page, -1);
     await reCheckStatus(lastCard.type, lastCard.status, typeRequest.sick, statusType.approved)
 })
 
 test('Leave Request - type Vacation', async ({page}) => {
-    await page.goto('/')
-    await login
-        .signIn(username, password)
-    await gotoTabRequests(page)
     await chooseTypeOfRequest(page, 'Vacation')
-
     const firstCard: { type: string, status: string } = await getCardData(page);
     await reCheckStatus(firstCard.type, firstCard.status, typeRequest.vacation, statusType.pending)
-    await clickButtonStatus(page, 'APPROVE')
-
+    await clickButtonStatus(page, 'APPROVE', statusType.approved)
+    await page.waitForTimeout(2000);
     const lastCard: { type: string, status: string } = await getCardData(page, -1);
     await reCheckStatus(lastCard.type, lastCard.status, typeRequest.vacation, statusType.approved)
+})
+
+test('Leave Requests - type Sick rejected', async ({page}) => {
+    await chooseTypeOfRequest(page, 'Sick Leave')
+    const firstCard: { type: string, status: string } = await getCardData(page);
+    await reCheckStatus(firstCard.type, firstCard.status, typeRequest.sick, statusType.pending)
+    await clickButtonStatus(page, 'REJECT', statusType.reject)
+    const lastCard: { type: string, status: string } = await getCardData(page, -1);
+    await reCheckStatus(lastCard.type, lastCard.status, typeRequest.sick, statusType.reject)
+})
+
+test('Leave Request - type Vacation rejected', async ({page}) => {
+    await chooseTypeOfRequest(page, 'Vacation')
+    const firstCard: { type: string, status: string } = await getCardData(page);
+    await reCheckStatus(firstCard.type, firstCard.status, typeRequest.vacation, statusType.pending)
+    await clickButtonStatus(page, 'REJECT', statusType.reject)
+    await page.waitForTimeout(2000);
+    const lastCard: { type: string, status: string } = await getCardData(page, -1);
+    await reCheckStatus(lastCard.type, lastCard.status, typeRequest.vacation, statusType.reject)
 })
