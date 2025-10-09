@@ -1,6 +1,7 @@
 import {test, expect} from '@playwright/test'
 // Assuming Login class is available from this path.
 import Login from "../../support/login/login";
+import Interception from "../../support/interception/interception";
 
 /**
  * @enum {string} selectors
@@ -8,15 +9,18 @@ import Login from "../../support/login/login";
  */
 enum selectors {
     /** CSS selector for the username field in the password reset form. */
-    fieldResetUsername = '#«r5»',
+    fieldResetUsername = '[data-testid="reset-username-input"]',
     /** CSS selector for the new password field in the password reset form. */
-    fieldResetPassword = '#«r6»',
+    fieldResetPassword = '[data-testid="reset-password-input"]',
     /** CSS selector for the secret code/confirmation field in the password reset form. */
-    fieldResetSecret = '#«r7»',
-    /** CSS selector for the username field in the sign-in form. */
-    fieldSignInUsername = '#«r2»',
-    /** CSS selector for the password field in the sign-in form. */
-    fieldSignInPassword = '#«r3»'
+    fieldResetSecret = '[data-testid="reset-reg-code-input"]',
+    /** CSS selector for the username input field on the sign-in form. */
+    fieldSignInUsername = '[data-testid="username-input"]',
+    /** CSS selector for the password input field on the sign-in form. */
+    fieldSignInPassword = '[data-testid="password-input"]',
+    linkToResetPassword = 'button:text("Forgot password?")',
+    resetPasswordButton = 'button:text("RESET PASSWORD")',
+    loginButton = 'button:text("LOGIN")',
 }
 
 /**
@@ -48,13 +52,14 @@ const statusCode: number = 200;
  * @description An instance of the Login class to handle sign-in operations.
  */
 let login: Login;
-
+let interception: Interception
 /**
  * @description Initializes the Login object before each test.
  * @param {{page: import('@playwright/test').Page}} object - The Playwright test fixture object containing the page object.
  */
 test.beforeEach(async ({page}) => {
     login = new Login(page);
+    interception = new Interception(page)
 });
 
 /**
@@ -79,22 +84,18 @@ test.describe('Registration and checking cases', () => {
      */
     test('Reset Password', async ({page}) => {
         await page.goto('/')
-        await page.locator('button:text("Forgot password?")').click()
+        await page.locator(selectors.linkToResetPassword).click()
 
         // Fill in the reset password form fields
         await page.locator(selectors.fieldResetUsername).fill(username)
-        await page.locator(selectors.fieldResetPassword).fill(secret_code) // new password
-        await page.locator(selectors.fieldResetSecret).fill(password)      // secret code
-
-        // Wait for the API response and click the RESET PASSWORD button concurrently
-        await Promise.all([
-            page.waitForResponse(resp =>
-                resp.url().includes('/api/reset-password') &&
-                resp.request().method() === 'POST' &&
-                resp.status() === statusCode
-            ),
-            page.locator('button:text("RESET PASSWORD")').click()
-        ]);
+        await page.locator(selectors.fieldResetSecret).fill(secret_code)
+        await page.locator(selectors.fieldResetPassword).fill(password)
+        await interception
+            .interceptions([{
+                url: '/api/reset-password',
+                method: 'POST',
+                statusCode: statusCode
+            }], selectors.resetPasswordButton)
     })
 
     /**
@@ -105,7 +106,7 @@ test.describe('Registration and checking cases', () => {
         await page.goto('/')
 
         // Check that the initial login form elements are visible before attempting sign-in
-        await page.locator('button:text("LOGIN")').click() // Optional: May be needed to ensure form is fully rendered/visible
+        await page.locator(selectors.loginButton).click() // Optional: May be needed to ensure form is fully rendered/visible
         await expect(page.locator(selectors.fieldSignInUsername)).toBeVisible();
         await expect(page.locator(selectors.fieldSignInPassword)).toBeVisible();
         await expect(page.locator('text=Welcome Back')).toBeVisible();

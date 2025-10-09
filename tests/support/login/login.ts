@@ -6,9 +6,9 @@ import {Page} from '@playwright/test';
  */
 enum selectors {
     /** CSS selector for the username input field on the sign-in form. */
-    fieldSignInUsername = '#«r2»',
+    fieldSignInUsername = '[data-testid="username-input"]',
     /** CSS selector for the password input field on the sign-in form. */
-    fieldSignInPassword = '#«r3»'
+    fieldSignInPassword = '[data-testid="password-input"]'
 }
 
 /**
