@@ -1,11 +1,5 @@
 import {Page} from '@playwright/test';
 
-/**
- * @typedef {object} Intercept
- * @property {string} url - The URL part to match (e.g., '/api/users').
- * @property {string} method - The HTTP method to match (e.g., 'GET', 'POST', 'PUT').
- * @property {number} statusCode - The expected HTTP status code of the response (e.g., 200, 201).
- */
 type Intercept = {
     url: string;
     method: string;
@@ -61,6 +55,5 @@ class Interception {
         return this;
     }
 }
-
 
 export default Interception;
