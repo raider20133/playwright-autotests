@@ -154,7 +154,7 @@ async function chooseTypeOfRequest(page: Page, selector: string): Promise<string
             url: '/api/leave', method: 'POST', statusCode: 201
         },
             {url: '/api/leave', method: 'GET', statusCode: statusCode}],
-        async () => await page.locator(selectors.submitButton).click()
+        selectors.submitButton
     )
     return today;
 }
@@ -180,10 +180,8 @@ async function clickButtonStatus(page: Page, buttonSelector: string, selectorId:
             method: 'PUT',
             statusCode: statusCode
         }],
-        async () => {
-            // Find the specific button associated with the request ID and click it.
-            await page.locator(finalSelector).click();
-        }
+        // Find the specific button associated with the request ID and click it.
+        finalSelector
     );
 
     // Locate the status chip for the request and assert its text content.

@@ -43,10 +43,7 @@ class Interception {
      * - `false` or `undefined`: No action is performed (useful if the action is triggered externally).
      * @returns {Promise<this>} The current Interception instance for method chaining.
      */
-    async interceptions(
-        intercepts: Intercept[],
-        clickAction?: string | (() => Promise<void>) | false
-    ): Promise<this> {
+    async interceptions(intercepts: Intercept[], clickAction?: string): Promise<this> {
         // Create an array of promises, one for each expected response
         const responses = intercepts.map(({url, method, statusCode}) =>
             this.page.waitForResponse(resp =>
@@ -57,11 +54,7 @@ class Interception {
         );
 
         // Execute the click/action if provided
-        if (typeof clickAction === 'string') {
-            await this.page.locator(clickAction).click();
-        } else if (typeof clickAction === 'function') {
-            await clickAction();
-        }
+        await this.page.locator(clickAction).click();
 
         // Now, wait for all the API responses to be received
         await Promise.all(responses);
