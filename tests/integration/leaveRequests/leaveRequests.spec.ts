@@ -3,8 +3,8 @@ import {test, expect, Page} from '@playwright/test'
 import Login from "../../support/login/login";
 // Assuming the Interception class is for simplifying API request waiting.
 import Interception from "../../support/interception/interception";
-// Importing API_BASE_URL from Playwright config for direct API calls.
-import {API_BASE_URL} from "../../../playwright.config";
+// Importing API_BASE_URL, USERNAME, and PASSWORD from Playwright config for direct API calls.
+import {API_BASE_URL, USERNAME, PASSWORD} from "../../../playwright.config";
 
 /**
  * @enum {string} selectors
@@ -16,26 +16,16 @@ enum selectors {
     requestType = '[aria-labelledby="leave-type-label"]',
     startDate = 'label:text("Start Date") >> xpath=.. >> input[type="date"]',
     endDate = 'label:text("End Date") >> xpath=.. >> input[type="date"]',
-    submitButton = 'button:text("SUBMIT")',
+    submitButton = '[data-testid="leave-request-submit-button"]',
     alertMessage = '.MuiAlert-message',
     deletingAllButton = '[data-testid="delete-all-button"]',
     tabLeaveRequest = '[data-testid="menu-item-leave-desktop"]',
     emptyMessage = '[data-testid="no-leave-requests-found"]',
     requestStatus = 'leave-request-status',
-    requestName = 'leave-request-type'
+    requestName = 'leave-request-type',
+    /** @description Data-testid for the element displaying the start and end dates of the leave request. */
+    requestDate = 'leave-request-dates'
 }
-
-/**
- * @type {string}
- * @description The username used for testing.
- */
-const username: string = 'Playwright'
-
-/**
- * @type {string}
- * @description The password used for testing.
- */
-const password: string = 'Playwright'
 
 /**
  * @type {number}
@@ -146,9 +136,9 @@ async function gotoTabRequests() {
  * @description Selects a type of leave request, fills in today's date for start/end, and submits the request.
  * @param {Page} page - The Playwright Page object.
  * @param {string} selector - The visible text of the leave type to select (e.g., 'Sick Leave', 'Vacation').
- * @returns {Promise<void>}
+ * @returns {Promise<string>} The ISO date string for "today" that was used for start/end date fields.
  */
-async function chooseTypeOfRequest(page: Page, selector: string) {
+async function chooseTypeOfRequest(page: Page, selector: string): Promise<string> {
     await page.locator(selectors.requestType).click()
     await page.locator(`role=option[name="${selector}"]`).click();
 
@@ -166,6 +156,7 @@ async function chooseTypeOfRequest(page: Page, selector: string) {
             {url: '/api/leave', method: 'GET', statusCode: statusCode}],
         async () => await page.locator(selectors.submitButton).click()
     )
+    return today;
 }
 
 /**
@@ -203,21 +194,24 @@ async function clickButtonStatus(page: Page, buttonSelector: string, selectorId:
 /**
  * @async
  * @function getCardData
- * @description Retrieves the type and status from a leave request card using its unique ID.
+ * @description Retrieves the type, status, and dates from a leave request card using its unique ID.
  * @param {Page} page - The Playwright Page object.
  * @param {string} selectorId - The unique ID of the leave request.
- * @returns {Promise<{type: string, status: string}>} An object containing the request type and status.
+ * @returns {Promise<{type: string, status: string, dates: string}>} An object containing the request type, status, and dates.
  */
 async function getCardData(page: Page, selectorId: string) {
     await page.waitForTimeout(1000); // Give the UI a moment to render
 
-    // Retrieve and trim the text content for type and status using the request ID.
+    // Retrieve and trim the text content for type, status, and dates using the request ID.
     const typeLocator = page.locator(`[${selector}="${selectors.requestName}-${selectorId}"]`);
     const statusLocator = page.locator(`[${selector}="${selectors.requestStatus}-${selectorId}"]`);
+    const datesLocator = page.locator(`[${selector}="${selectors.requestDate}-${selectorId}"]`);
 
     const type: string = (await typeLocator.textContent())?.trim() || '';
     const status: string = (await statusLocator.textContent())?.trim() || '';
-    return {type, status};
+    const dates: string = (await datesLocator.textContent())?.trim() || '';
+
+    return {type, status, dates};
 }
 
 /**
@@ -261,7 +255,8 @@ test.describe('Leave Requests', () => {
      */
     test.beforeEach(async ({page}) => {
         await page.goto('/');
-        await login.signIn(username, password, statusCode);
+        // Use constants imported from config for login credentials
+        await login.signIn(USERNAME, PASSWORD, statusCode);
         await gotoTabRequests();
     });
 
@@ -279,8 +274,8 @@ test.describe('Leave Requests', () => {
             const requestsBefore: LeaveRequest[] = await resBefore.json();
             const requestIdsBefore = new Set(requestsBefore.map(r => r.id));
 
-            // 1. Create a new request.
-            await chooseTypeOfRequest(page, leaveType);
+            // 1. Create a new request. The function returns the date used.
+            const today: string = await chooseTypeOfRequest(page, leaveType);
 
             // --- Find the ID of the new request ---
             const resAfter = await page.request.get(`${API_BASE_URL}/api/leave`, {
@@ -292,21 +287,24 @@ test.describe('Leave Requests', () => {
             // Identify the unique new request by checking which ID didn't exist before
             const newRequest: LeaveRequest = requestsAfter.find(r => !requestIdsBefore.has(r.id));
             expect(newRequest).toBeDefined();
-            const newRequestId = newRequest.id;
+            const newRequestId: string = newRequest.id;
 
-            // 2. Verify the newly created request is initially pending.
-            const firstCard: { type: string, status: string } = await getCardData(page, newRequestId);
+            // 2. Verify the newly created request is initially pending, and check the dates.
+            const firstCard: { type: string, status: string, dates: string } = await getCardData(page, newRequestId);
             await reCheckStatus(firstCard.type, firstCard.status, typeRequest[typeKey], statusType.pending);
+
+            // Check the displayed date format (assuming 'en-US' locale for date formatting)
+            const formattedDate = new Date(today).toLocaleDateString('en-US');
+            expect(firstCard.dates).toBe(`${formattedDate} - ${formattedDate}`);
 
             // 3. Perform the action (APPROVE/REJECT) and verify its updated status.
             await clickButtonStatus(page, action, newRequestId, statusType[expectedStatus]);
 
             // 4. Verify the final status of the request after the action.
-            const lastCard: { type: string, status: string } = await getCardData(page, newRequestId);
+            const lastCard: { type: string, status: string, dates: string } = await getCardData(page, newRequestId);
             await reCheckStatus(lastCard.type, lastCard.status, typeRequest[typeKey], statusType[expectedStatus]);
         });
     }
-
 
     /**
      * @test Tests the error handling when submitting a request without selecting required data.

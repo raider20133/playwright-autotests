@@ -8,7 +8,9 @@ enum selectors {
     /** CSS selector for the username input field on the sign-in form. */
     fieldSignInUsername = '[data-testid="username-input"]',
     /** CSS selector for the password input field on the sign-in form. */
-    fieldSignInPassword = '[data-testid="password-input"]'
+    fieldSignInPassword = '[data-testid="password-input"]',
+    /** CSS selector for the button LOGIN on the sign-in form*/
+    buttonSubmit = '[data-testid="login-button"]'
 }
 
 /**
@@ -53,7 +55,7 @@ class Login {
                 resp.request().method() === 'POST' &&
                 resp.status() === statusCode
             ),
-            this.page.locator('button:text("LOGIN")').click()
+            this.page.locator(selectors.buttonSubmit).click()
         ]);
         return this;
     }
