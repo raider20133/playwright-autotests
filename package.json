@@ -1,18 +1,23 @@
 {
   "name": "playwrigth",
   "version": "1.0.0",
-  "description": "Run all autotests: npx playwright test Run one autotest:  npx playwright test tests/integration/leaveRequests/leaveRequests.spec.ts Run test inside autotests: npx playwright test -g \"addToCart\"",
+  "description": "E2E tests for the application using Playwright",
   "main": "index.js",
   "directories": {
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }

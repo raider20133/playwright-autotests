@@ -21,7 +21,19 @@ enum selectors {
     taskCheckbox = 'task-checkbox',
     inputForName = '[data-testid="task-form-name-input"] input',
     selectInputType = '[data-testid="task-form-type-select"]',
-    inputForPrice = '[data-testid="task-form-price-input"] input'
+    inputForPrice = '[data-testid="task-form-price-input"] input',
+    /** Selector for all task list items displayed in the "Close Month" confirmation modal. */
+    allTaskInModalWindow = '[data-testid="all-tasks-list"] li',
+    /** Selector for all task list items displayed in the next month view. */
+    allTaskListInNextMonth = '[data-testid="tasks-list"] li',
+    /** Button to open the "Close Month" modal/process. */
+    btnCloseMonth = '[data-testid="close-month-button"]',
+    /** Button to navigate to the next month view. */
+    btnNextMonth = '[data-testid="next-month-button"]',
+    /** Confirmation button inside the "Close Month" modal. */
+    btnConfirmCloseMonth = '[data-testid="close-month-confirm-button"]',
+    /** Message displayed when no tasks are found for the current month. */
+    messageWithoutTasks = '[data-testid="no-tasks-found"]'
 }
 
 /**
@@ -32,7 +44,7 @@ const navigationTabUrl: string = '/api/tasks'
 
 /**
  * @type {Login}
- * @description An instance of the Login class to handle sign-in operations.
+ * @description An instance of the Login class to handle user sign-in operations.
  */
 let login: Login;
 
@@ -49,22 +61,13 @@ let navigation: Navigation
 let interception: Interception;
 
 /**
- * @typedef {'Free' | 'Paid'} typeStatus
+ * @enum {string} TaskType
  * @description Defines the possible task status/type (Free or Paid).
  */
-type typeStatus = 'Free' | 'Paid'
-
-/**
- * @constant {typeStatus} Free
- * @description The string value for a free task type.
- */
-const Free: typeStatus = 'Free'
-
-/**
- * @constant {typeStatus} Paid
- * @description The string value for a paid task type.
- */
-const Paid: typeStatus = 'Paid'
+enum TaskType {
+    Free = 'Free',
+    Paid = 'Paid'
+}
 
 /**
  * @typedef {200 | 201 | 204} codes
@@ -121,36 +124,32 @@ let universalSelector: string = 'data-testid'
 
 /**
  * @async
- * @function createTask
+ * @function fillTaskForm
  * @description Opens the add task form, fills in the name, selects the type, and optionally fills the price.
  * @param {Page} page - The Playwright Page object.
  * @param {string} nameValue - The name to give the new task.
- * @param {string} typeValue - The type of task ('Free' or 'Paid').
- * @param {string} [priceValue] - The price for the task (required if type is 'Paid').
+ * @param {TaskType} typeValue - The type of task ('Free' or 'Paid').
+ * @param {string} [priceValue] - The price for the task (used if type is 'Paid').
  * @returns {Promise<void>}
  */
-async function createTask(page: Page, nameValue: string, typeValue: string, priceValue?: string) {
+async function fillTaskForm(page: Page, nameValue: string, typeValue: TaskType, priceValue?: string) {
     await page.locator(selectors.btnAddTask).click()
     await page.locator(selectors.inputForName).fill(nameValue);
     await page.locator(selectors.selectInputType).click();
     await page.locator(`role=option[name="${typeValue}"]`).click();
 
-    if (typeValue === Paid) {
+    if (typeValue === TaskType.Paid && priceValue) {
         await page.locator(selectors.inputForPrice).fill(priceValue)
     }
 }
 
 /**
  * @async
- * @function checkDataInTask
- * @description Submits the new task form, retrieves the created ID, toggles the task checkbox, and verifies the displayed task name and type/price.
- * @param {Page} page - The Playwright Page object.
- * @param {string} nameValue - The expected task name.
- * @param {string} typeValue - The expected task type ('Free' or 'Paid').
- * @param {string} [priceValue] - The expected price value (if type is 'Paid').
+ * @function submitTaskForm
+ * @description Submits the task creation form and retrieves the ID of the newly created task from the API response.
  * @returns {Promise<void>}
  */
-async function checkDataInTask(page: Page, nameValue: string, typeValue: string, priceValue?: string) {
+async function submitTaskForm() {
     // Submit the form and wait for the POST (creation) response
     const responsePromise = await interception.interceptions([{
         url: navigationTabUrl,
@@ -161,10 +160,23 @@ async function checkDataInTask(page: Page, nameValue: string, typeValue: string,
     // Extract the created ID from the API response
     const data = await responsePromise[0].json();
     createdId = data.id;
+}
 
+/**
+ * @async
+ * @function checkDataInTask
+ * @description Toggles the task checkbox and verifies the displayed task name and type/price based on the globally stored `createdId`.
+ * @param {Page} page - The Playwright Page object.
+ * @param {string} nameValue - The expected task name.
+ * @param {TaskType} typeValue - The expected task type ('Free' or 'Paid').
+ * @param {string} [priceValue] - The expected price value (if type is 'Paid').
+ * @returns {Promise<void>}
+ */
+async function checkDataInTask(page: Page, nameValue: string, typeValue: TaskType, priceValue?: string) {
     // Verify initial checkbox state and click it
     const checkbox = page.locator(`[${universalSelector}="${selectors.taskCheckbox}-${createdId}"]`)
-    await expect(checkbox).not.toHaveClass('/Mui-checked/')
+    // Using a simpler regex check for the Mui-checked class
+    await expect(checkbox).not.toHaveClass(/Mui-checked/)
     await checkbox.click();
     await expect(checkbox).toHaveClass(/(^|\s)Mui-checked(\s|$)/)
 
@@ -174,10 +186,10 @@ async function checkDataInTask(page: Page, nameValue: string, typeValue: string,
 
     // Verify task type/price
     const type = page.locator(`[${universalSelector}="${selectors.taskItem}-${createdId}"] p`)
-    if (typeValue === Free) {
+    if (typeValue === TaskType.Free) {
         await expect(type).toHaveText('free')
     } else {
-        // Use RegExp to handle currency formatting if needed (e.g., '₴120.00')
+        // Use RegExp to handle currency formatting (e.g., '₴120.00')
         await expect(type).toHaveText(new RegExp(`₴${priceValue}\\.00`));
     }
 }
@@ -185,7 +197,7 @@ async function checkDataInTask(page: Page, nameValue: string, typeValue: string,
 /**
  * @async
  * @function removeTask
- * @description Clicks the delete button for the globally stored `createdId` and verifies the task is removed from the DOM.
+ * @description Clicks the delete button for the globally stored `createdId` and waits for the task to be removed from the DOM and the DELETE API response.
  * @param {Page} page - The Playwright Page object.
  * @returns {Promise<void>}
  */
@@ -202,6 +214,25 @@ async function removeTask(page: Page) {
 }
 
 /**
+ * @async
+ * @function checkListWithTasks
+ * @description Locates list items based on a selector, checks if the count matches the expected quantity, and verifies all items are visible.
+ * @param {Page} page - The Playwright Page object.
+ * @param {string} selector - The CSS selector for the list items (e.g., `selectors.allTaskInModalWindow`).
+ * @param {number} qty - The expected number of tasks in the list.
+ * @returns {Promise<void>}
+ */
+async function checkListWithTasks(page: Page, selector: string, qty: number) {
+    const items = page.locator(selector);
+
+    await expect(items).toHaveCount(qty);
+
+    for (const el of await items.all()) {
+        await expect(el).toBeVisible();
+    }
+}
+
+/**
  * @description Sets up the Login, Interception, and Navigation objects before each test.
  * @param {{page: Page}} object - The Playwright test fixture object containing the page object.
  */
@@ -212,7 +243,7 @@ test.beforeEach(async ({page}) => {
 });
 
 /**
- * @description Test suite for 'Checklist' functionality, covering creation, validation, and deletion of tasks.
+ * @description Test suite for 'Checklist' functionality, covering creation, validation, and month closure.
  */
 test.describe('Checklist', () => {
 
@@ -233,8 +264,9 @@ test.describe('Checklist', () => {
      */
     test('Creating new task with free amount', async ({page}) => {
 
-        await createTask(page, taskName, Free)
-        await checkDataInTask(page, taskName, Free)
+        await fillTaskForm(page, taskName, TaskType.Free)
+        await submitTaskForm()
+        await checkDataInTask(page, taskName, TaskType.Free)
         await removeTask(page)
     })
 
@@ -244,8 +276,9 @@ test.describe('Checklist', () => {
      */
     test('Creating new task with amount ', async ({page}) => {
 
-        await createTask(page, taskName, Paid, value)
-        await checkDataInTask(page, taskName, Paid, value)
+        await fillTaskForm(page, taskName, TaskType.Paid, value)
+        await submitTaskForm()
+        await checkDataInTask(page, taskName, TaskType.Paid, value)
         await removeTask(page)
     })
 
@@ -261,5 +294,60 @@ test.describe('Checklist', () => {
 
         // Verify the expected validation error message
         await expect(page.locator(selectors.allerMessage)).toHaveText('Task name is required.')
+    })
+
+    /**
+     * @test Tests the process of closing the current month, carrying over tasks, and navigating to the next month view.
+     * @param {{page: Page}} object - The Playwright test fixture object containing the page object.
+     */
+    test('Moving tasks to next month free and paid type', async ({page}) => {
+        // 1. Create a Free task and check it (completed)
+        await fillTaskForm(page, `${taskName} Free`, TaskType.Free)
+        await submitTaskForm()
+        const checkbox = page.locator(`[${universalSelector}="${selectors.taskCheckbox}-${createdId}"]`)
+        await checkbox.click(); // Mark it as completed (or checked)
+
+        // 2. Create a Paid task (uncompleted)
+        await fillTaskForm(page, `${taskName} Paid`, TaskType.Paid, value)
+        await submitTaskForm()
+        // The Paid task is left unchecked (uncompleted)
+
+        // 3. Open the "Close Month" modal
+        await page.locator(selectors.btnCloseMonth).click()
+
+        // 4. Verify both tasks are listed in the modal (2 tasks total)
+        await checkListWithTasks(page, selectors.allTaskInModalWindow, 2)
+
+        // 5. Confirm closing the month and wait for the API carryover response
+        await interception.interceptions([{
+            url: 'api/tasks/carryover',
+            method: 'POST',
+            statusCode: statusCode.Created
+        }], selectors.btnConfirmCloseMonth)
+
+        // 6. Verify the current month view is now empty
+        await expect(page.locator(selectors.messageWithoutTasks)).toHaveText('No tasks found for this month.')
+
+        // 7. Navigate to the next month
+        await page.locator(selectors.btnNextMonth).click()
+
+        // 8. Verify the 2 tasks have been carried over to the next month
+        await checkListWithTasks(page, selectors.allTaskListInNextMonth, 2)
+
+        // 9. Clean up by deleting the carried-over tasks (simulating future interaction)
+        const buttons = page.locator(`${selectors.allTaskListInNextMonth} button`);
+        const count: number = await buttons.count();
+
+        for (let i: number = 0; i < count; i++) {
+            // Click each delete button sequentially
+            await buttons.nth(i).click();
+
+            // Wait for the DELETE response for cleanup
+            await interception.interceptions([{
+                url: '/api/tasks',
+                method: 'DELETE',
+                statusCode: statusCode.NoContent
+            }]);
+        }
     })
 })

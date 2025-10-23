@@ -2,3 +2,4 @@
 /playwright-screenshots/
 node_modules
 .env
+/playwright-report/

@@ -37,11 +37,11 @@ class Interception {
      */
     async interceptions(
         intercepts: Intercept[],
-        clickAction: string,
+        clickAction?: string,
         waitForResponses: boolean = false
     ): Promise<Response[] | this> {
         // Create an array of promises, one for each expected response
-        const responsePromises = intercepts.map(({url, method, statusCode}) =>
+        const responsePromises: Promise<Response>[] = intercepts.map(({url, method, statusCode}) =>
             this.page.waitForResponse(resp =>
                 resp.url().includes(url) &&
                 resp.request().method() === method &&
@@ -49,9 +49,9 @@ class Interception {
             )
         );
 
-        await this.page.locator(clickAction).click();
-
-
+        if (clickAction) {
+            await this.page.locator(clickAction).click();
+        }
         // If we need to work with responses, wait and return them
         if (waitForResponses) {
             return await Promise.all(responsePromises);

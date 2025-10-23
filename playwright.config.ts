@@ -12,12 +12,12 @@ export const SECRET_PASSWORD: string = process.env.SECRET_PASSWORD
 export default defineConfig({
     use: {
         baseURL: baseURL,
-        headless: false,
+        headless: true,
         screenshot: 'only-on-failure',
     },
     testDir: './tests',
     outputDir: './playwright-screenshots',
     timeout: 10 * 2000,
     expect: {timeout: 5000},
-    reporter: [['list']],
+    reporter: [['list'], ['html']],
 });

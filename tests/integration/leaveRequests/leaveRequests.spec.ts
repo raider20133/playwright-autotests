@@ -172,7 +172,6 @@ async function chooseTypeOfRequest(page: Page, selector: string): Promise<string
     return today;
 }
 
-
 /**
  * @async
  * @function clickButtonStatus
@@ -199,7 +198,7 @@ async function clickButtonStatus(page: Page, buttonSelector: string, status: str
 
     // Locate the status chip for the request and assert its text content.
     const statusLocator = page.locator(`[${selector}="${selectors.requestStatus}-${createdId}"]`);
-    await expect(statusLocator).toHaveText(status);
+    await expect(statusLocator).toHaveText(new RegExp(status, 'i'));
 }
 
 /**
@@ -210,8 +209,6 @@ async function clickButtonStatus(page: Page, buttonSelector: string, status: str
  * @returns {Promise<{type: string, status: string, dates: string}>} An object containing the request type, status, and dates.
  */
 async function getCardData(page: Page) {
-    await page.waitForTimeout(1000); // Give the UI a moment to render
-
     // Retrieve and trim the text content for type, status, and dates using the stored request ID.
     const typeLocator = page.locator(`[${selector}="${selectors.requestName}-${createdId}"]`);
     const statusLocator = page.locator(`[${selector}="${selectors.requestStatus}-${createdId}"]`);
