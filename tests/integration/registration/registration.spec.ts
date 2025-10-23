@@ -2,6 +2,7 @@ import {test, expect} from '@playwright/test'
 // Assuming Login class is available from this path.
 import Login from "../../support/login/login";
 import Interception from "../../support/interception/interception";
+import {USER, PASSWORD, SECRET_PASSWORD} from "../../../playwright.config";
 
 /**
  * @enum {string} selectors
@@ -22,24 +23,6 @@ enum selectors {
     resetPasswordButton = 'button:text("RESET PASSWORD")',
     loginButton = 'button:text("LOGIN")',
 }
-
-/**
- * @constant {string} username
- * @description The standard valid username used for testing.
- */
-const username: string = 'Playwright'
-
-/**
- * @constant {string} password
- * @description The standard valid password used for testing.
- */
-const password: string = 'Playwright'
-
-/**
- * @constant {string} secret_code
- * @description The secret code or new password used for the password reset test case.
- */
-const secret_code: string = 'CHRONOS_SECRET'
 
 /**
  * @constant {number} statusCode
@@ -75,7 +58,7 @@ test.describe('Registration and checking cases', () => {
         await page.goto('/')
         // Use the signIn method from the Login class for authentication
         await login
-            .signIn(username, password, statusCode)
+            .signIn(USER, PASSWORD, statusCode)
     })
 
     /**
@@ -87,9 +70,9 @@ test.describe('Registration and checking cases', () => {
         await page.locator(selectors.linkToResetPassword).click()
 
         // Fill in the reset password form fields
-        await page.locator(selectors.fieldResetUsername).fill(username)
-        await page.locator(selectors.fieldResetSecret).fill(secret_code)
-        await page.locator(selectors.fieldResetPassword).fill(password)
+        await page.locator(selectors.fieldResetUsername).fill(USER)
+        await page.locator(selectors.fieldResetSecret).fill(SECRET_PASSWORD)
+        await page.locator(selectors.fieldResetPassword).fill(PASSWORD)
         await interception
             .interceptions([{
                 url: '/api/reset-password',

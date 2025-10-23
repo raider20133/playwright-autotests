@@ -1,9 +1,13 @@
 import {defineConfig} from '@playwright/test';
+import * as dotenv from 'dotenv';
 
-const baseURL: string = 'https://managmenttool-front-end.onrender.com/';
-export const API_BASE_URL: string = 'https://managmenttool.onrender.com';
-export const USERNAME: string = 'Playwright'
-export const PASSWORD: string = 'Playwright'
+dotenv.config({override: true});
+
+const baseURL: string = process.env.BASE_URL;
+export const API_BASE_URL: string = process.env.API_BASE_URL;
+export const USER: string = process.env.USER
+export const PASSWORD: string = process.env.PASSWORD
+export const SECRET_PASSWORD: string = process.env.SECRET_PASSWORD
 
 export default defineConfig({
     use: {

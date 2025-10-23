@@ -1,2 +1,4 @@
 .idea
 /playwright-screenshots/
+node_modules
+.env
