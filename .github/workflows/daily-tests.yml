@@ -86,3 +86,18 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           npm run deploy:allure -- -r https://x-access-token:${GH_TOKEN}@github.com/raider20133/playwright-autotests.git
+
+      #####################################################
+      # Send Telegram notification
+      #####################################################
+      - name: Notify Telegram
+        run: |
+          STATUS="✅ Passed"
+          if grep -q '"status":"failed"' allure-results/*; then
+            STATUS="❌ Failed"
+          fi
+          MESSAGE="Playwright tests finished: $STATUS\nAllure Report: https://raider20133.github.io/playwright-autotests/"
+          
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+               -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+               -d text="$MESSAGE"
