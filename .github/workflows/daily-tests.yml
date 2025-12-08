@@ -1,0 +1,78 @@
+name: Playwright CI with Allure
+
+on:
+  schedule:
+    - cron: "0 6 * * *"     # Daily run at 06:00 UTC
+  workflow_dispatch:         # Allow manual trigger
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Environment variables from GitHub Secrets
+    env:
+      BASE_URL: ${{ secrets.BASE_URL }}
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      USER: ${{ secrets.USER }}
+      PASSWORD: ${{ secrets.PASSWORD }}
+      SECRET_PASSWORD: ${{ secrets.SECRET_PASSWORD }}
+
+    steps:
+      # Checkout repository
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # Setup Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Install Playwright browsers
+      - name: Install Browsers
+        run: npx playwright install --with-deps
+
+      #####################################################
+      # Restore Allure history from previous run
+      #####################################################
+      - name: Download Allure history
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-history
+          path: allure-results/history
+        continue-on-error: true   # Skip if first run (no history yet)
+
+      #####################################################
+      # Run Playwright tests
+      #####################################################
+      - name: Run tests
+        run: npx playwright test
+
+      #####################################################
+      # Generate Allure HTML report
+      #####################################################
+      - name: Generate Allure Report
+        run: npx allure generate allure-results --clean -o allure-report
+
+      #####################################################
+      # Upload Allure report as artifact
+      #####################################################
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
+
+      #####################################################
+      # Save Allure history for next run (trends)
+      #####################################################
+      - name: Save Allure history
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-history
+          path: allure-report/history
+          retention-days: 90

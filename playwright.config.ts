@@ -19,5 +19,5 @@ export default defineConfig({
     outputDir: './playwright-screenshots',
     timeout: 10 * 2000,
     expect: {timeout: 5000},
-    reporter: [['list'], ['html']],
+    reporter: [['list'], ['html'],['allure-playwright']]
 });
