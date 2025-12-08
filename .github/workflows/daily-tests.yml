@@ -37,16 +37,6 @@ jobs:
         run: npx playwright install --with-deps
 
       #####################################################
-      # Restore Allure history from previous run
-      #####################################################
-      - name: Download Allure history
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-history
-          path: allure-results/history
-        continue-on-error: true   # Skip if first run (no history yet)
-
-      #####################################################
       # Run Playwright tests
       #####################################################
       - name: Run tests
