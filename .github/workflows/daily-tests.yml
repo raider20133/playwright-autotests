@@ -2,14 +2,13 @@ name: Playwright CI with Allure
 
 on:
   schedule:
-    - cron: "0 6 * * *"     # Daily run at 06:00 UTC
-  workflow_dispatch:         # Allow manual trigger
+    - cron: "0 6 * * *"  # Daily run at 06:00 UTC
+  workflow_dispatch:      # Manual trigger
 
 jobs:
   run_playwright_tests:
     runs-on: ubuntu-latest
 
-    # Environment variables from GitHub Secrets
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
@@ -22,7 +21,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Setup Node.js environment
+      # Setup Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -37,10 +36,10 @@ jobs:
         run: npx playwright install --with-deps
 
       #####################################################
-      # Run Playwright tests
+      # Run Playwright tests (continue even if some fail)
       #####################################################
       - name: Run tests
-        run: npx playwright test
+        run: npx playwright test || true   # allow workflow to continue
 
       #####################################################
       # Generate Allure HTML report
@@ -66,3 +65,13 @@ jobs:
           name: allure-history
           path: allure-report/history
           retention-days: 90
+            
+      #####################################################
+      # Deploy Allure report to GitHub Pages
+      #####################################################
+      - name: Deploy Allure Report to GitHub Pages
+        run: |
+         npm install --save-dev gh-pages
+         npm run deploy:allure
+        env:
+         GH_TOKEN: ${{ secrets.GH_PAT }}

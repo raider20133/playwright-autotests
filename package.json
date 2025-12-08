@@ -9,7 +9,8 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "deploy:allure": "gh-pages -d allure-report -b gh-pages -r https://github.com/raider20133/playwright-autotests.git"
   },
   "keywords": [],
   "author": "",
