@@ -37,16 +37,6 @@ jobs:
         run: npx playwright install --with-deps
 
       #####################################################
-      # Download previous Allure history
-      #####################################################
-      - name: Download Allure history
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-history
-          path: allure-report/history
-        continue-on-error: true
-
-      #####################################################
       # Run Playwright tests (continue even if some fail)
       #####################################################
       - name: Run tests
@@ -105,8 +95,8 @@ jobs:
           FAILED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="failed")] | length')
           SKIPPED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="skipped")] | length')
 
-          # Start time in UTC
-          START_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          # Start time in Kyiv timezone
+          START_TIME=$(TZ="Europe/Rome" date +"%Y-%m-%d %H:%M:%S %Z")
 
           # Report URL with timestamp to avoid caching
           REPORT_URL="https://raider20133.github.io/playwright-autotests/?t=$(date +%s)"
@@ -120,7 +110,12 @@ jobs:
           📊 Total: $TOTAL
           🔗 Allure Report: $REPORT_URL"
 
+          # Add a delay to allow GitHub Pages to update
+          echo "Waiting for 60 seconds for GitHub Pages to deploy..."
+          sleep 60
+          
           # Send message to Telegram
+          echo "Sending notification to Telegram..."
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="$MESSAGE" \
