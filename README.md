@@ -74,3 +74,26 @@ To run the tests, use the following npm scripts:
   ```bash
   npm run report
   ```
+
+## CI/CD and Reporting
+
+This project uses GitHub Actions for Continuous Integration and Allure for detailed test reporting.
+
+### GitHub Actions Workflow
+
+A GitHub Actions workflow is configured in `.github/workflows/daily-tests.yml` to automate test execution. This workflow has the following features:
+
+- **Daily Execution**: Tests are automatically run every day at 06:00 UTC.
+- **Manual Trigger**: You can also trigger the workflow manually from the Actions tab in the GitHub repository.
+- **Allure Report Generation**: After the tests run, an Allure report is generated.
+- **Deployment to GitHub Pages**: The generated Allure report is automatically deployed to GitHub Pages, providing a live dashboard of the test results.
+
+### Allure Test Report
+
+The Allure Framework is used to create detailed and interactive test reports. These reports provide a clear overview of the test results, including:
+
+-   A detailed breakdown of test statuses (passed, failed, skipped).
+-   Historical trends of test runs.
+-   Screenshots and other artifacts for failed tests.
+
+You can view the latest Allure report here: [Allure Report](https://raider20133.github.io/playwright-autotests/)
