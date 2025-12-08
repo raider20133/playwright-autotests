@@ -104,10 +104,12 @@ jobs:
           # Build message as a double-quoted string for variable expansion
           MESSAGE="🧪 Playwright Test Run Summary
           📅 Started at: $START_TIME
+          
           ✅ Passed: $PASSED
           ❌ Failed: $FAILED
           ⚪ Skipped: $SKIPPED
           📊 Total: $TOTAL
+          
           🔗 Allure Report: $REPORT_URL"
 
           # Add a delay to allow GitHub Pages to update
@@ -119,5 +121,6 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="$MESSAGE" \
-            -d parse_mode="Markdown"
+            -d parse_mode="Markdown" \
+            -d disable_web_page_preview=true
 
