@@ -44,7 +44,7 @@ jobs:
         with:
           name: allure-history
           path: allure-report/history
-        continue-on-error: true   # якщо ще немає попередньої історії
+        continue-on-error: true
 
       #####################################################
       # Run Playwright tests (continue even if some fail)
@@ -88,16 +88,41 @@ jobs:
           npm run deploy:allure -- -r https://x-access-token:${GH_TOKEN}@github.com/raider20133/playwright-autotests.git
 
       #####################################################
-      # Send Telegram notification
+      # Send Telegram notification with test summary
       #####################################################
       - name: Notify Telegram
         run: |
-          STATUS="✅ Passed"
-          if grep -q '"status":"failed"' allure-results/*; then
-            STATUS="❌ Failed"
+          # Handle case where no result files are found
+          if ! ls allure-results/*-result.json 1> /dev/null 2>&1; then
+            echo "No test result files found. Skipping notification."
+            exit 0
           fi
-          MESSAGE="Playwright tests finished: $STATUS\nAllure Report: https://raider20133.github.io/playwright-autotests/"
           
+          # Combine results and count tests
+          JSON_RESULTS=$(jq -s '.' allure-results/*-result.json)
+          TOTAL=$(echo "$JSON_RESULTS" | jq 'length')
+          PASSED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="passed")] | length')
+          FAILED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="failed")] | length')
+          SKIPPED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="skipped")] | length')
+
+          # Start time in UTC
+          START_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Report URL with timestamp to avoid caching
+          REPORT_URL="https://raider20133.github.io/playwright-autotests/?t=$(date +%s)"
+
+          # Build message as a double-quoted string for variable expansion
+          MESSAGE="🧪 Playwright Test Run Summary
+          📅 Started at: $START_TIME
+          ✅ Passed: $PASSED
+          ❌ Failed: $FAILED
+          ⚪ Skipped: $SKIPPED
+          📊 Total: $TOTAL
+          🔗 Allure Report: $REPORT_URL"
+
+          # Send message to Telegram
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
-               -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-               -d text="$MESSAGE"
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="$MESSAGE" \
+            -d parse_mode="Markdown"
+
