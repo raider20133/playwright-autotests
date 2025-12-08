@@ -8,7 +8,6 @@ on:
 jobs:
   run_playwright_tests:
     runs-on: ubuntu-latest
-
     env:
       BASE_URL: ${{ secrets.BASE_URL }}
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
@@ -18,48 +17,35 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_PAT }}
 
     steps:
-      # Checkout repository
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Setup Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      # Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Install Playwright browsers
       - name: Install Browsers
         run: npx playwright install --with-deps
 
-      #####################################################
-      # Run Playwright tests (continue even if some fail)
-      #####################################################
       - name: Run tests
         run: npx playwright test || true   # allow workflow to continue
 
-      #####################################################
-      # Generate Allure HTML report (uses downloaded history)
-      #####################################################
       - name: Generate Allure Report
         run: npx allure generate allure-results --clean -o allure-report
 
-      #####################################################
-      # Upload Allure report as artifact
-      #####################################################
+      - name: Create deployment timestamp
+        run: echo $(date +%s) > allure-report/deploy_timestamp.txt
+
       - name: Upload Allure report
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
+          name: allure-report-${{ github.run_id }}
           path: allure-report
 
-      #####################################################
-      # Save Allure history for next run (trends)
-      #####################################################
       - name: Save Allure history
         uses: actions/upload-artifact@v4
         with:
@@ -67,60 +53,96 @@ jobs:
           path: allure-report/history
           retention-days: 90
 
-      #####################################################
-      # Deploy Allure report to GitHub Pages
-      #####################################################
       - name: Deploy Allure Report to GitHub Pages
         run: |
           npm install --save-dev gh-pages
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          npm run deploy:allure -- -r https://x-access-token:${GH_TOKEN}@github.com/raider20133/playwright-autotests.git
+          npm run deploy:allure -- --dest ${{ github.run_id }} -r https://x-access-token:${GH_TOKEN}@github.com/raider20133/playwright-autotests.git
 
-      #####################################################
-      # Send Telegram notification with test summary
-      #####################################################
       - name: Notify Telegram
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
-          # Handle case where no result files are found
           if ! ls allure-results/*-result.json 1> /dev/null 2>&1; then
             echo "No test result files found. Skipping notification."
             exit 0
           fi
           
-          # Combine results and count tests
           JSON_RESULTS=$(jq -s '.' allure-results/*-result.json)
           TOTAL=$(echo "$JSON_RESULTS" | jq 'length')
           PASSED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="passed")] | length')
           FAILED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="failed")] | length')
           SKIPPED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="skipped")] | length')
 
-          # Start time in Kyiv timezone
           START_TIME=$(TZ="Europe/Rome" date +"%Y-%m-%d %H:%M:%S %Z")
+          REPORT_URL="https://raider20133.github.io/playwright-autotests/$GITHUB_RUN_ID/"
 
-          # Report URL with timestamp to avoid caching
-          REPORT_URL="https://raider20133.github.io/playwright-autotests/?t=$(date +%s)"
-
-          # Build message as a double-quoted string for variable expansion
           MESSAGE="🧪 Playwright Test Run Summary
           📅 Started at: $START_TIME
-          
           ✅ Passed: $PASSED
           ❌ Failed: $FAILED
           ⚪ Skipped: $SKIPPED
           📊 Total: $TOTAL
-          
           🔗 Allure Report: $REPORT_URL"
 
-          # Add a delay to allow GitHub Pages to update
-          echo "Waiting for 60 seconds for GitHub Pages to deploy..."
-          sleep 60
-          
-          # Send message to Telegram
           echo "Sending notification to Telegram..."
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="$MESSAGE" \
-            -d parse_mode="Markdown" \
-            -d disable_web_page_preview=true
+            -d parse_mode="Markdown"
 
+  cleanup_old_reports:
+    needs: run_playwright_tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: 'gh-pages'
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Clean up old reports
+        env:
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          git config --global user.name "GitHub Actions Cleanup"
+          git config --global user.email "actions@github.com"
+
+          # 30 days in seconds
+          CUTOFF_SECONDS=2592000
+          CURRENT_TIME=$(date +%s)
+          CUTOFF_TIME=$(($CURRENT_TIME - $CUTOFF_SECONDS))
+
+          echo "Current time: $(date -d @$CURRENT_TIME)"
+          echo "Cutoff time: $(date -d @$CUTOFF_TIME) (reports older than this will be deleted)"
+          echo "Current run ID (not for deletion): $CURRENT_RUN_ID"
+
+          # Loop through all numeric directories
+          for REPORT_DIR in $(ls -d */ | grep '^[0-9]*/$' | sed 's/\\\///'); do
+            if [ "$REPORT_DIR" == "$CURRENT_RUN_ID" ]; then
+              echo "Skipping current report directory: $REPORT_DIR"
+              continue
+            fi
+
+            if [ -f "$REPORT_DIR/deploy_timestamp.txt" ]; then
+              DEPLOY_TIME=$(cat "$REPORT_DIR/deploy_timestamp.txt")
+              
+              if [ "$DEPLOY_TIME" -lt "$CUTOFF_TIME" ]; then
+                echo "DELETING old report: $REPORT_DIR (deployed at $(date -d @$DEPLOY_TIME))"
+                git rm -rf "$REPORT_DIR"
+              else
+                echo "KEEPING recent report: $REPORT_DIR (deployed at $(date -d @$DEPLOY_TIME))"
+              fi
+            else
+              echo "WARNING: Skipping directory without timestamp file: $REPORT_DIR. Consider manual deletion."
+            fi
+          done
+
+          if ! git diff --quiet || ! git diff --staged --quiet; then
+            echo "Committing and pushing cleanup changes..."
+            git commit -m "MAINT: Clean up Allure reports older than 30 days"
+            git push
+          else
+            echo "No old reports to clean up."
+          fi
