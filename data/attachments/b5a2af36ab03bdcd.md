@@ -64,7 +64,7 @@
               - checkbox [ref=e96]
               - img [ref=e97]
             - generic [ref=e99]:
-              - generic [ref=e100]: Monthly task 1765221122696 Paid
+              - generic [ref=e100]: Monthly task 1765221158831 Paid
               - paragraph [ref=e101]: ₴120.00
             - button "delete" [ref=e103] [cursor=pointer]:
               - img [ref=e104]
@@ -73,7 +73,7 @@
               - checkbox [ref=e108]
               - img [ref=e109]
             - generic [ref=e111]:
-              - generic [ref=e112]: Monthly task 1765221122696 Free
+              - generic [ref=e112]: Monthly task 1765221158831 Free
               - paragraph [ref=e113]: free
             - button "delete" [ref=e115] [cursor=pointer]:
               - img [ref=e116]
@@ -82,7 +82,7 @@
               - checkbox [ref=e120]
               - img [ref=e121]
             - generic [ref=e123]:
-              - generic [ref=e124]: Monthly task 1765220965284 Paid
+              - generic [ref=e124]: Monthly task 1765221122696 Paid
               - paragraph [ref=e125]: ₴120.00
             - button "delete" [ref=e127] [cursor=pointer]:
               - img [ref=e128]
@@ -91,7 +91,7 @@
               - checkbox [ref=e132]
               - img [ref=e133]
             - generic [ref=e135]:
-              - generic [ref=e136]: Monthly task 1765220965284 Free
+              - generic [ref=e136]: Monthly task 1765221122696 Free
               - paragraph [ref=e137]: free
             - button "delete" [ref=e139] [cursor=pointer]:
               - img [ref=e140]
@@ -100,7 +100,7 @@
               - checkbox [ref=e144]
               - img [ref=e145]
             - generic [ref=e147]:
-              - generic [ref=e148]: Monthly task 1765220950234 Paid
+              - generic [ref=e148]: Monthly task 1765220965284 Paid
               - paragraph [ref=e149]: ₴120.00
             - button "delete" [ref=e151] [cursor=pointer]:
               - img [ref=e152]
@@ -109,12 +109,30 @@
               - checkbox [ref=e156]
               - img [ref=e157]
             - generic [ref=e159]:
-              - generic [ref=e160]: Monthly task 1765220950234 Free
+              - generic [ref=e160]: Monthly task 1765220965284 Free
               - paragraph [ref=e161]: free
             - button "delete" [ref=e163] [cursor=pointer]:
               - img [ref=e164]
-        - separator [ref=e166]
-        - generic [ref=e167]:
-          - button "Add Task" [ref=e168] [cursor=pointer]: Add Task
-          - button "Close Month" [ref=e169] [cursor=pointer]: Close Month
+          - listitem [ref=e166]:
+            - generic [ref=e167] [cursor=pointer]:
+              - checkbox [ref=e168]
+              - img [ref=e169]
+            - generic [ref=e171]:
+              - generic [ref=e172]: Monthly task 1765220950234 Paid
+              - paragraph [ref=e173]: ₴120.00
+            - button "delete" [ref=e175] [cursor=pointer]:
+              - img [ref=e176]
+          - listitem [ref=e178]:
+            - generic [ref=e179] [cursor=pointer]:
+              - checkbox [ref=e180]
+              - img [ref=e181]
+            - generic [ref=e183]:
+              - generic [ref=e184]: Monthly task 1765220950234 Free
+              - paragraph [ref=e185]: free
+            - button "delete" [ref=e187] [cursor=pointer]:
+              - img [ref=e188]
+        - separator [ref=e190]
+        - generic [ref=e191]:
+          - button "Add Task" [ref=e192] [cursor=pointer]: Add Task
+          - button "Close Month" [ref=e193] [cursor=pointer]: Close Month
 ```
