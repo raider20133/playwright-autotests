@@ -47,29 +47,33 @@
             - img [ref=e71]
             - generic [ref=e74]: Calendar
   - main [ref=e75]:
-    - generic [ref=e80]:
-      - heading "Tasks" [level=6] [ref=e81]
-      - generic [ref=e82]:
-        - button [ref=e83] [cursor=pointer]:
-          - img [ref=e84]
-        - heading "December 2025" [level=5] [ref=e86]
-        - button [ref=e87] [cursor=pointer]:
-          - img [ref=e88]
-      - separator [ref=e90]
-      - heading "Tasks for December" [level=5] [ref=e91]
-      - generic [ref=e92]:
-        - list [ref=e93]:
-          - listitem [ref=e94]:
-            - generic [ref=e95] [cursor=pointer]:
-              - checkbox [checked] [ref=e96]
-              - img [ref=e97]
-            - generic [ref=e99]:
-              - generic [ref=e100]: Monthly task 1765220965284
-              - paragraph [ref=e101]: ₴120.00
-            - button "delete" [ref=e103] [cursor=pointer]:
-              - img [ref=e104]
-        - separator [ref=e106]
-        - generic [ref=e107]:
-          - button "Add Task" [ref=e108] [cursor=pointer]: Add Task
-          - button "Close Month" [active] [ref=e109] [cursor=pointer]: Close Month
+    - generic [ref=e78]:
+      - alert [ref=e79]:
+        - img [ref=e81]
+        - generic [ref=e83]: Failed to update task. Reverting changes.
+      - generic [ref=e85]:
+        - heading "Tasks" [level=6] [ref=e86]
+        - generic [ref=e87]:
+          - button [ref=e88] [cursor=pointer]:
+            - img [ref=e89]
+          - heading "December 2025" [level=5] [ref=e91]
+          - button [ref=e92] [cursor=pointer]:
+            - img [ref=e93]
+        - separator [ref=e95]
+        - heading "Tasks for December" [level=5] [ref=e96]
+        - generic [ref=e97]:
+          - list [ref=e98]:
+            - listitem [ref=e99]:
+              - generic [ref=e100] [cursor=pointer]:
+                - checkbox [ref=e101]
+                - img [ref=e102]
+              - generic [ref=e104]:
+                - generic [ref=e105]: Monthly task 1765220954512
+                - paragraph [ref=e106]: free
+              - button "delete" [ref=e108] [cursor=pointer]:
+                - img [ref=e109]
+          - separator [ref=e111]
+          - generic [ref=e112]:
+            - button "Add Task" [ref=e113] [cursor=pointer]: Add Task
+            - button "Close Month" [ref=e114] [cursor=pointer]
 ```
