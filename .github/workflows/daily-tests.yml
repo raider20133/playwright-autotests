@@ -1,11 +1,14 @@
 name: Playwright CI with Allure
 
 on:
+  # Schedule daily runs at 06:00 UTC
   schedule:
-    - cron: "0 6 * * *"  # Daily run at 06:00 UTC
-  workflow_dispatch:      # Manual trigger
+    - cron: "0 6 * * *"
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
 
 jobs:
+  # This job runs the Playwright tests, generates the Allure report, and sends a notification.
   run_playwright_tests:
     runs-on: ubuntu-latest
     env:
@@ -17,35 +20,47 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_PAT }}
 
     steps:
+      # Step 1: Check out the repository code
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # Step 2: Set up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
+      # Step 3: Install project dependencies
       - name: Install dependencies
         run: npm install
 
+      # Step 4: Install Playwright browsers
       - name: Install Browsers
         run: npx playwright install --with-deps
 
+      # Step 5: Run Playwright tests
+      # '|| true' ensures the workflow continues even if tests fail,
+      # so the report can still be generated and published.
       - name: Run tests
-        run: npx playwright test || true   # allow workflow to continue
+        run: npx playwright test || true
 
+      # Step 6: Generate the Allure HTML report from test results
       - name: Generate Allure Report
         run: npx allure generate allure-results --clean -o allure-report
 
+      # Step 7: Create a timestamp file inside the report directory.
+      # This timestamp is used by the cleanup job to determine the age of the report.
       - name: Create deployment timestamp
         run: echo $(date +%s) > allure-report/deploy_timestamp.txt
 
+      # Step 8: Upload the generated report as a build artifact for inspection
       - name: Upload Allure report
         uses: actions/upload-artifact@v4
         with:
           name: allure-report-${{ github.run_id }}
           path: allure-report
 
+      # Step 9: Save Allure history to be used for trend charts in the next run
       - name: Save Allure history
         uses: actions/upload-artifact@v4
         with:
@@ -53,6 +68,9 @@ jobs:
           path: allure-report/history
           retention-days: 90
 
+      # Step 10: Deploy the Allure report to GitHub Pages
+      # The report is deployed to a unique directory named after the workflow's run_id.
+      # This prevents browser caching issues and ensures each run has a persistent report URL.
       - name: Deploy Allure Report to GitHub Pages
         run: |
           npm install --save-dev gh-pages
@@ -60,48 +78,66 @@ jobs:
           git config --global user.email "actions@github.com"
           npm run deploy:allure -- --dest ${{ github.run_id }} -r https://x-access-token:${GH_TOKEN}@github.com/raider20133/playwright-autotests.git
 
+      # Step 11: Send a summary notification to a Telegram chat
       - name: Notify Telegram
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
-          if ! ls allure-results/*-result.json 1> /dev/null 2>&1; then
+          # Only proceed if test result files exist
+          if ! ls allure-results/*-result.json 1> /dev/null 2>&1;
+          then
             echo "No test result files found. Skipping notification."
             exit 0
           fi
           
+          # Calculate test statistics from Allure result files
           JSON_RESULTS=$(jq -s '.' allure-results/*-result.json)
           TOTAL=$(echo "$JSON_RESULTS" | jq 'length')
           PASSED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="passed")] | length')
           FAILED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="failed")] | length')
           SKIPPED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="skipped")] | length')
 
+          # Set variables for the message
           START_TIME=$(TZ="Europe/Rome" date +"%Y-%m-%d %H:%M:%S %Z")
           REPORT_URL="https://raider20133.github.io/playwright-autotests/$GITHUB_RUN_ID/"
 
+          # Build the message content
           MESSAGE="🧪 Playwright Test Run Summary
           📅 Started at: $START_TIME
+          
           ✅ Passed: $PASSED
           ❌ Failed: $FAILED
           ⚪ Skipped: $SKIPPED
           📊 Total: $TOTAL
+          
           🔗 Allure Report: $REPORT_URL"
 
+          # Wait for 90 seconds to allow GitHub Pages to build and deploy the new report.
+          # This prevents a 404 error when clicking the link immediately after receiving the notification.
+          echo "Waiting for 90 seconds for GitHub Pages to deploy..."
+          sleep 90
+
+          # Send the message using the Telegram Bot API
           echo "Sending notification to Telegram..."
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d text="$MESSAGE" \
             -d parse_mode="Markdown"
 
+  # This job runs after the tests and cleans up old Allure reports from the gh-pages branch.
   cleanup_old_reports:
+    # Ensures this job runs only after the test job has completed
     needs: run_playwright_tests
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Checkout the gh-pages branch where reports are stored
       - name: Checkout gh-pages branch
         uses: actions/checkout@v4
         with:
           ref: 'gh-pages'
           token: ${{ secrets.GH_PAT }}
 
+      # Step 2: Run the cleanup script
       - name: Clean up old reports
         env:
           CURRENT_RUN_ID: ${{ github.run_id }}
@@ -109,7 +145,7 @@ jobs:
           git config --global user.name "GitHub Actions Cleanup"
           git config --global user.email "actions@github.com"
 
-          # 30 days in seconds
+          # Define the cutoff for deletion (30 days in seconds)
           CUTOFF_SECONDS=2592000
           CURRENT_TIME=$(date +%s)
           CUTOFF_TIME=$(($CURRENT_TIME - $CUTOFF_SECONDS))
@@ -118,16 +154,19 @@ jobs:
           echo "Cutoff time: $(date -d @$CUTOFF_TIME) (reports older than this will be deleted)"
           echo "Current run ID (not for deletion): $CURRENT_RUN_ID"
 
-          # Loop through all numeric directories
-          for REPORT_DIR in $(ls -d */ | grep '^[0-9]*/$' | sed 's/\\\///'); do
+          # Loop through all numeric-named directories in the root
+          for REPORT_DIR in $(ls -d */ 2>/dev/null | grep '^[0-9]*/$' | sed 's/\///g'); do
+            # Do not delete the report for the current run
             if [ "$REPORT_DIR" == "$CURRENT_RUN_ID" ]; then
               echo "Skipping current report directory: $REPORT_DIR"
               continue
             fi
 
+            # Check for the timestamp file to determine age
             if [ -f "$REPORT_DIR/deploy_timestamp.txt" ]; then
               DEPLOY_TIME=$(cat "$REPORT_DIR/deploy_timestamp.txt")
               
+              # If the deployment time is before the cutoff, delete the directory
               if [ "$DEPLOY_TIME" -lt "$CUTOFF_TIME" ]; then
                 echo "DELETING old report: $REPORT_DIR (deployed at $(date -d @$DEPLOY_TIME))"
                 git rm -rf "$REPORT_DIR"
@@ -139,6 +178,7 @@ jobs:
             fi
           done
 
+          # If any files were deleted, commit and push the changes
           if ! git diff --quiet || ! git diff --staged --quiet; then
             echo "Committing and pushing cleanup changes..."
             git commit -m "MAINT: Clean up Allure reports older than 30 days"

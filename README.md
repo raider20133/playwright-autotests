@@ -96,4 +96,20 @@ The Allure Framework is used to create detailed and interactive test reports. Th
 -   Historical trends of test runs.
 -   Screenshots and other artifacts for failed tests.
 
-You can view the latest Allure report here: [Allure Report](https://raider20133.github.io/playwright-autotests/)
+The link to the latest Allure report is dynamically generated for each run and sent via Telegram notification.
+
+### Telegram Notifications
+
+After each workflow run, a notification is automatically sent to a designated Telegram chat. This provides an immediate summary of the test results.
+
+The notification includes:
+- **Test Summary**: A quick overview of the number of passed, failed, and skipped tests.
+- **Timestamp**: The start time of the test run.
+- **Link to Allure Report**: A unique, direct link to the full Allure report for that specific run, hosted on GitHub Pages.
+
+#### Configuration
+
+To enable Telegram notifications, you need to configure the following secrets in your GitHub repository's settings (`Settings > Secrets and variables > Actions`):
+
+-   `TELEGRAM_TOKEN`: The authentication token for your Telegram bot.
+-   `TELEGRAM_CHAT_ID`: The unique identifier for the target chat where notifications will be sent.
