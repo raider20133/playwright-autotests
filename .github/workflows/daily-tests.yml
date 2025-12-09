@@ -104,13 +104,21 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Download all allure results from the matrix jobs
+      # Download all allure results from the matrix jobs. They will be downloaded into separate directories.
       - name: Download Allure results
         uses: actions/download-artifact@v4
         with:
-          path: allure-results/
-          pattern: allure-results-*
-          merge-multiple: true
+          path: all-results # Each artifact will be in a subdirectory here
+
+      # Merge all downloaded allure-results into a single directory
+      - name: Merge Allure results
+        run: |
+          mkdir -p allure-results
+          find all-results -type f -name '*-result.json' -exec cp {} allure-results/ \;
+          find all-results -type f -name '*-attachment.*' -exec cp {} allure-results/ \;
+          find all-results -type f -name 'categories.json' -exec cp {} allure-results/ \;
+          find all-results -type f -name 'environment.properties' -exec cp {} allure-results/ \;
+
 
       # Download Allure history from the last successful run
       - name: Download Allure history
