@@ -214,7 +214,7 @@ jobs:
               ERROR_MSG=$(echo "$failure" | jq -r '.statusDetails.message' | sed -e 's/^[[:space:]]*//' -e 's/[][`*_]/ /g' | head -n 5)
               
               MESSAGE+=$'\n\n'"*Test:* $TEST_NAME"
-              MESSAGE+=$'\n'"*Browser:* `${BROWSER^}`"
+              MESSAGE+=$'\n'"*Browser:* ${BROWSER^}"
               MESSAGE+=$'\n'"*Error:* $ERROR_MSG..."
             done <<< "$FAILURES"
           fi
