@@ -1,0 +1,79 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - paragraph [ref=e7]: Pages / Checklist
+        - heading "Checklist" [level=6] [ref=e8]
+      - generic [ref=e9]:
+        - button [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+        - button [ref=e13] [cursor=pointer]:
+          - img [ref=e14]
+        - button [ref=e16] [cursor=pointer]:
+          - img [ref=e17]
+  - navigation "mailbox folders" [ref=e19]:
+    - generic [ref=e21]:
+      - generic [ref=e23]: Chronos
+      - list [ref=e24]:
+        - listitem [ref=e25]:
+          - button "Dashboard" [ref=e26] [cursor=pointer]:
+            - img [ref=e28]
+            - generic [ref=e31]: Dashboard
+        - listitem [ref=e32]:
+          - button "Leave Requests" [ref=e33] [cursor=pointer]:
+            - img [ref=e35]
+            - generic [ref=e38]: Leave Requests
+        - listitem [ref=e39]:
+          - button "Service Tracker" [ref=e40] [cursor=pointer]:
+            - img [ref=e42]
+            - generic [ref=e46]: Service Tracker
+        - listitem [ref=e47]:
+          - button "Checklist" [ref=e48] [cursor=pointer]:
+            - img [ref=e50]
+            - generic [ref=e53]: Checklist
+        - listitem [ref=e54]:
+          - button "Wish List" [ref=e55] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e60]: Wish List
+        - listitem [ref=e61]:
+          - button "PDF Draw Tool" [ref=e62] [cursor=pointer]:
+            - img [ref=e64]
+            - generic [ref=e67]: PDF Draw Tool
+        - listitem [ref=e68]:
+          - button "Calendar" [ref=e69] [cursor=pointer]:
+            - img [ref=e71]
+            - generic [ref=e74]: Calendar
+  - main [ref=e75]:
+    - generic [ref=e78]:
+      - alert [ref=e79]:
+        - img [ref=e81]
+        - generic [ref=e83]: Failed to update task. Reverting changes.
+      - generic [ref=e85]:
+        - heading "Tasks" [level=6] [ref=e86]
+        - generic [ref=e87]:
+          - button [ref=e88] [cursor=pointer]:
+            - img [ref=e89]
+          - heading "December 2025" [level=5] [ref=e91]
+          - button [ref=e92] [cursor=pointer]:
+            - img [ref=e93]
+        - separator [ref=e95]
+        - heading "Tasks for December" [level=5] [ref=e96]
+        - generic [ref=e97]:
+          - list [ref=e98]:
+            - listitem [ref=e99]:
+              - generic [ref=e100] [cursor=pointer]:
+                - checkbox [ref=e101]
+                - img [ref=e102]
+              - generic [ref=e104]:
+                - generic [ref=e105]: Monthly task 1765286011124
+                - paragraph [ref=e106]: ₴120.00
+              - button "delete" [ref=e108] [cursor=pointer]:
+                - img [ref=e109]
+          - separator [ref=e111]
+          - generic [ref=e112]:
+            - button "Add Task" [ref=e113] [cursor=pointer]: Add Task
+            - button "Close Month" [ref=e114] [cursor=pointer]
+```
