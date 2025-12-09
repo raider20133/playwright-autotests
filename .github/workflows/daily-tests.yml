@@ -6,15 +6,6 @@ on:
     - cron: "0 6 * * *"
   # Allow manual triggering of the workflow
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to run tests against'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - production
 
 jobs:
   # This job runs the Playwright tests for each browser in the matrix.
@@ -25,9 +16,8 @@ jobs:
       matrix:
         browser: [ 'chromium', 'firefox', 'webkit' ]
     env:
-      # Dynamically set secrets based on the chosen environment
-      BASE_URL: ${{ secrets[format('{0}_BASE_URL', upper(github.event.inputs.environment || 'staging'))] }}
-      API_BASE_URL: ${{ secrets[format('{0}_API_BASE_URL', upper(github.event.inputs.environment || 'staging'))] }}
+      BASE_URL: ${{ secrets.BASE_URL }}
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
       USER: ${{ secrets.USER }}
       PASSWORD: ${{ secrets.PASSWORD }}
       SECRET_PASSWORD: ${{ secrets.SECRET_PASSWORD }}
@@ -183,10 +173,10 @@ jobs:
           # Set variables for the message
           START_TIME=$(TZ="Europe/Rome" date +"%Y-%m-%d %H:%M:%S %Z")
           REPORT_URL="https://raider20133.github.io/playwright-autotests/$GITHUB_RUN_ID/"
-          ENVIRONMENT="${{ github.event.inputs.environment || 'daily' }}"
+          ENVIRONMENT="Daily Run"
           
           # Build the summary message
-          MESSAGE="*🧪 Playwright Test Run Summary (${ENVIRONMENT^})*"
+          MESSAGE="*🧪 Playwright Test Run Summary (${ENVIRONMENT})*"
           MESSAGE+=$'\n'"📅 Started at: $START_TIME"
           MESSAGE+=$'\n'
           MESSAGE+=$'\n'"*📊 Overall Results:*"
