@@ -100,14 +100,30 @@ jobs:
         with:
           path: all-results # Each artifact will be in a subdirectory here
 
-      # Merge all downloaded allure-results into a single directory
-      - name: Merge Allure results
+      # Merge all downloaded allure-results into a single directory, adding browser labels
+      - name: Merge and Tag Allure results
         run: |
           mkdir -p allure-results
-          find all-results -type f -name '*-result.json' -exec cp {} allure-results/ \;
-          find all-results -type f -name '*-attachment.*' -exec cp {} allure-results/ \;
-          find all-results -type f -name 'categories.json' -exec cp {} allure-results/ \;
-          find all-results -type f -name 'environment.properties' -exec cp {} allure-results/ \;
+          if [ -d "all-results" ]; then
+            echo "Found downloaded artifacts. Merging and tagging now..."
+            # Find all browser-specific result directories
+            for BROWSER_DIR in $(find all-results -mindepth 1 -maxdepth 1 -type d); do
+              # Extract browser name from directory name (e.g., allure-results-chromium -> chromium)
+              BROWSER_NAME=$(basename "$BROWSER_DIR" | sed 's/allure-results-//')
+              echo "Processing results for browser: $BROWSER_NAME"
+
+              # Copy attachments and other files directly
+              find "$BROWSER_DIR" -type f ! -name '*-result.json' -exec cp -t allure-results/ {} +
+
+              # Process result files, adding a browser label to each
+              for RESULT_FILE in $(find "$BROWSER_DIR" -type f -name '*-result.json'); do
+                jq --arg browser "$BROWSER_NAME" '.labels += [{"name": "browser", "value": $browser}]' "$RESULT_FILE" > "allure-results/$(basename "$RESULT_FILE")"
+              done
+            done
+          else
+            echo "::warning::'all-results' directory not found. No artifacts were downloaded to merge."
+          fi
+
 
 
       # Download Allure history from the last successful run
@@ -194,7 +210,7 @@ jobs:
             
             while IFS= read -r failure; do
               TEST_NAME=$(echo "$failure" | jq -r '.fullName' | sed 's/.* › //')
-              BROWSER=$(echo "$failure" | jq -r '(.labels[] | select(.name=="project").value)')
+              BROWSER=$(echo "$failure" | jq -r '(.labels[] | select(.name=="browser").value)')
               ERROR_MSG=$(echo "$failure" | jq -r '.statusDetails.message' | sed -e 's/^[[:space:]]*//' -e 's/[][`*_]/ /g' | head -n 5)
               
               MESSAGE+=$'\n\n'"*Test:* $TEST_NAME"
