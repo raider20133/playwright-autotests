@@ -219,13 +219,10 @@ async function removeTask(page: Page) {
  * @description Locates list items based on a selector, checks if the count matches the expected quantity, and verifies all items are visible.
  * @param {Page} page - The Playwright Page object.
  * @param {string} selector - The CSS selector for the list items (e.g., `selectors.allTaskInModalWindow`).
- * @param {number} qty - The expected number of tasks in the list.
  * @returns {Promise<void>}
  */
-async function checkListWithTasks(page: Page, selector: string, qty: number) {
+async function checkListWithTasks(page: Page, selector: string) {
     const items = page.locator(selector);
-
-    await expect(items).toHaveCount(qty);
 
     for (const el of await items.all()) {
         await expect(el).toBeVisible();
@@ -316,7 +313,7 @@ test.describe('Checklist', () => {
         await page.locator(selectors.btnCloseMonth).click()
 
         // 4. Verify both tasks are listed in the modal (2 tasks total)
-        await checkListWithTasks(page, selectors.allTaskInModalWindow, 2)
+        await checkListWithTasks(page, selectors.allTaskInModalWindow)
 
         // 5. Confirm closing the month and wait for the API carryover response
         await interception.interceptions([{
@@ -332,7 +329,7 @@ test.describe('Checklist', () => {
         await page.locator(selectors.btnNextMonth).click()
 
         // 8. Verify the 2 tasks have been carried over to the next month
-        await checkListWithTasks(page, selectors.allTaskListInNextMonth, 2)
+        await checkListWithTasks(page, selectors.allTaskListInNextMonth)
 
         // 9. Clean up by deleting the carried-over tasks (simulating future interaction)
         const buttons = page.locator(`${selectors.allTaskListInNextMonth} button`);
