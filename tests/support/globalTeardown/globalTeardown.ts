@@ -14,7 +14,9 @@ enum selectors {
     /** Button to navigate to the next month view. */
     btnNextMonth = '[data-testid="next-month-button"]',
     /** Container for the list of tasks. */
-    taskList = '[data-testid="tasks-list"]'
+    taskBlock = '[data-testid="tasks-list"]',
+    /**List of task in container */
+    taskList = '[data-testid="tasks-list"] li'
 }
 
 /**
@@ -62,9 +64,9 @@ export default async function globalTeardown() {
 
         // 4. Navigate to the next month to target carried-over tasks
         await page.locator(selectors.btnNextMonth).click();
-        await page.locator(selectors.taskList).isVisible()
+        await page.locator(selectors.taskBlock).isVisible()
         // Wait for at least one task item (li) to appear in the list, or timeout if empty.
-        await page.waitForSelector('[data-testid="tasks-list"] li', {
+        await page.waitForSelector(selectors.taskList, {
             timeout: 5000
         });
 
