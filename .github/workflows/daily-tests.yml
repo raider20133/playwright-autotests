@@ -162,65 +162,69 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          # Only proceed if test result files exist
-          if ! ls allure-results/*-result.json 1> /dev/null 2>&1;
-          then
+          # Skip if no results
+          if ! ls allure-results/*-result.json 1> /dev/null 2>&1; then
             echo "No test result files found. Skipping notification."
             exit 0
           fi
 
-          # Calculate test statistics
+          # Collect all results in one JSON array
           JSON_RESULTS=$(jq -s '.' allure-results/*-result.json)
-          TOTAL=$(echo "$JSON_RESULTS" | jq 'length')
-          PASSED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="passed")] | length')
-          FAILED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="failed")] | length')
-          SKIPPED=$(echo "$JSON_RESULTS" | jq '[.[] | select(.status=="skipped")] | length')
 
-          # Set variables for the message
+          # Extract unique tags
+          TAGS=$(echo "$JSON_RESULTS" | jq -r '[.[] | .labels[]? | select(.name=="tag") | .value] | unique[]')
+
+          # Time + URLs
           START_TIME=$(TZ="Europe/Rome" date +"%Y-%m-%d %H:%M:%S %Z")
           REPORT_URL="https://raider20133.github.io/playwright-autotests/$GITHUB_RUN_ID/"
           ENVIRONMENT="Daily Run"
-          
-          # Build the summary message
-          MESSAGE="*🧪 Playwright Test Run Summary (${ENVIRONMENT})*"
-          MESSAGE+=$'\n'"📅 Started at: $START_TIME"
-          MESSAGE+=$'\n'
-          MESSAGE+=$'\n'"*📊 Overall Results:*"
-          MESSAGE+=$'\n'"✅ Passed: $PASSED"
-          MESSAGE+=$'\n'"❌ Failed: $FAILED"
-          MESSAGE+=$'\n'"⚪ Skipped: $SKIPPED"
-          MESSAGE+=$'\n'"📈 Total: $TOTAL"
 
-          # If there are failed tests, add details
-          if [ "$FAILED" -gt 0 ]; then
+          # Loop by tag
+          for TAG in $TAGS; do
+            FILTERED=$(echo "$JSON_RESULTS" | jq --arg t "$TAG" '[.[] | select(.labels[]? | (.name=="tag" and .value==$t))]')
+
+            TOTAL=$(echo "$FILTERED" | jq 'length')
+            PASSED=$(echo "$FILTERED" | jq '[.[] | select(.status=="passed")] | length')
+            FAILED=$(echo "$FILTERED" | jq '[.[] | select(.status=="failed")] | length')
+            SKIPPED=$(echo "$FILTERED" | jq '[.[] | select(.status=="skipped")] | length')
+
+            MESSAGE="*🏷️ TAG:* \`$TAG\`"
+            MESSAGE+=$'\n'"*🧪 Test Run Summary ($ENVIRONMENT)*"
+            MESSAGE+=$'\n'"📅 Started: $START_TIME"
             MESSAGE+=$'\n'
-            MESSAGE+=$'\n'"*🔥 Failed Tests Details:*"
-            
-            FAILURES=$(echo "$JSON_RESULTS" | jq -c '.[] | select(.status=="failed")')
-            
-            while IFS= read -r failure; do
-              TEST_NAME=$(echo "$failure" | jq -r '.fullName' | sed 's/.* › //')
-              BROWSER=$(echo "$failure" | jq -r '(.labels[] | select(.name=="browser").value)')
-              ERROR_MSG=$(echo "$failure" | jq -r '.statusDetails.message' | sed -e 's/^[[:space:]]*//' -e 's/[][`*_]/ /g' | head -n 5)
-              
-              MESSAGE+=$'\n\n'"*Test:* $TEST_NAME"
-              MESSAGE+=$'\n'"*Browser:* ${BROWSER^}"
-              MESSAGE+=$'\n'"*Error:* $ERROR_MSG..."
-            done <<< "$FAILURES"
-          fi
-          
-          MESSAGE+=$'\n\n'"🔗 *Allure Report:* [View Full Report]($REPORT_URL)"
+            MESSAGE+=$'\n'"*📊 Results for tag:* \`$TAG\`"
+            MESSAGE+=$'\n'"✅ Passed: $PASSED"
+            MESSAGE+=$'\n'"❌ Failed: $FAILED"
+            MESSAGE+=$'\n'"⚪ Skipped: $SKIPPED"
+            MESSAGE+=$'\n'"📈 Total: $TOTAL"
 
-          # Wait for GitHub Pages to deploy
-          echo "Waiting for 90 seconds for GitHub Pages to deploy..."
-          sleep 90
+            # Add failed tests list
+            if [ "$FAILED" -gt 0 ]; then
+              MESSAGE+=$'\n\n'"*🔥 Failed Tests:*"
 
-          # Send the message using the Telegram Bot API
-          echo "Sending notification to Telegram..."
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="$MESSAGE" \
-            -d parse_mode="Markdown"
+              FAILURES=$(echo "$FILTERED" | jq -c '.[] | select(.status=="failed")')
+
+              while IFS= read -r failure; do
+                TEST_NAME=$(echo "$failure" | jq -r '.fullName' | sed 's/.* › //')
+                BROWSER=$(echo "$failure" | jq -r '(.labels[] | select(.name=="browser").value)')
+                ERROR_MSG=$(echo "$failure" | jq -r '.statusDetails.message' | head -n 3 | sed 's/[][`*_]/ /g')
+
+                MESSAGE+=$'\n\n'"*Test:* $TEST_NAME"
+                MESSAGE+=$'\n'"*Browser:* ${BROWSER^}"
+                MESSAGE+=$'\n'"*Error:* $ERROR_MSG..."
+              done <<< "$FAILURES"
+            fi
+
+            MESSAGE+=$'\n\n'"🔗 *Allure Report:* [View]($REPORT_URL)"
+
+            echo "Sending Telegram message for tag: $TAG"
+
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+              -d chat_id="${TELEGRAM_CHAT_ID}" \
+              -d text="$MESSAGE" \
+              -d parse_mode="Markdown"
+          done
+  
 
   # This job runs after the tests and cleans up old Allure reports from the gh-pages branch.
   cleanup_old_reports:
@@ -263,7 +267,7 @@ jobs:
             # Check for the timestamp file to determine age
             if [ -f "$REPORT_DIR/deploy_timestamp.txt" ]; then
               DEPLOY_TIME=$(cat "$REPORT_DIR/deploy_timestamp.txt")
-              
+          
               # If the deployment time is before the cutoff, delete the directory
               if [ "$DEPLOY_TIME" -lt "$CUTOFF_TIME" ]; then
                 echo "DELETING old report: $REPORT_DIR (deployed at $(date -d @$DEPLOY_TIME))"

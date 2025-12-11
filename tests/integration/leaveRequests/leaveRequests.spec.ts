@@ -1,10 +1,4 @@
-import {test, expect, Page} from '@playwright/test'
-// Assuming the Login class is for handling user sign-in.
-import Login from "../../support/login/login";
-// Assuming the Interception class is for simplifying API request waiting.
-import Interception from "../../support/interception/interception";
-// Assuming the Navigation class is for navigation between tabs
-import Navigation from "../../support/tabNavigation/tabNavigation";
+import {test, expect} from '../../fixtures/fixtures';
 // Importing USER, and PASSWORD from Playwright config for direct API calls.
 import {USER, PASSWORD} from "../../../playwright.config";
 
@@ -13,74 +7,86 @@ import {USER, PASSWORD} from "../../../playwright.config";
  * @description Enumeration of data-testid selectors and other specific CSS selectors used in the Leave Requests page.
  */
 enum selectors {
+    /** Data-testid for the button used to approve a leave request. */
     approveButton = 'approve-button',
+    /** Data-testid for the button used to reject a leave request. */
     rejectButton = 'reject-button',
+    /** Selector for the dropdown/select input used to choose the type of leave request. */
     requestType = '[aria-labelledby="leave-type-label"]',
+    /** Input field for the start date of the leave request. */
     startDate = 'label:text("Start Date") >> xpath=.. >> input[type="date"]',
+    /** Input field for the end date of the leave request. */
     endDate = 'label:text("End Date") >> xpath=.. >> input[type="date"]',
+    /** Button used to submit the leave request form. */
     submitButton = '[data-testid="leave-request-submit-button"]',
+    /** Selector for the message area of a standard UI alert (e.g., validation message). */
     alertMessage = '.MuiAlert-message',
+    /** Button to delete all existing leave requests. */
     deletingAllButton = '[data-testid="delete-all-button"]',
+    /** Selector for the desktop navigation tab leading to Leave Requests. */
     tabLeaveRequest = '[data-testid="menu-item-leave-desktop"]',
+    /** Message displayed when no leave requests are found. */
     emptyMessage = '[data-testid="no-leave-requests-found"]',
+    /** Base data-testid for the element displaying the status of a leave request, typically appended with an ID. */
     requestStatus = 'leave-request-status',
+    /** Base data-testid for the element displaying the type/name of a leave request, typically appended with an ID. */
     requestName = 'leave-request-type',
-    /** @description Data-testid for the element displaying the start and end dates of the leave request. */
+    /** Base data-testid for the element displaying the start and end dates of the leave request, typically appended with an ID. */
     requestDate = 'leave-request-dates'
 }
 
 /**
  * @type {number}
- * @description The expected HTTP status code for successful API calls (e.g., login, reset).
+ * @description The expected HTTP status code for successful API calls (e.g., login, reset, updates).
  * */
 const statusCode: number = 200;
 
 /**
  * @type {string}
- * @description The API endpoint URL used for navigating to the leave request tab and managing requests.
+ * @description The API endpoint URL used for navigating to the leave request tab and managing requests (GET, POST, PUT, DELETE).
  */
 const navigationTabUrl: string = '/api/leave'
 
 /**
  * @interface TypeRequest
- * @description Defines the keys for different types of leave requests.
+ * @description Defines the keys and their expected display names for different types of leave requests.
  */
 interface TypeRequest {
-    /** The key for a sick leave request. */
+    /** The display name for a sick leave request. */
     sick: string,
-    /** The key for a vacation request. */
+    /** The display name for a vacation request. */
     vacation: string
 }
 
 /**
  * @interface StatusType
- * @description Defines the keys for different leave request statuses.
+ * @description Defines the keys and their expected string values for different leave request statuses.
  */
 interface StatusType {
-    /** The key for a pending status. */
+    /** The string value for a pending status. */
     pending: string,
-    /** The key for an approved status. */
+    /** The string value for an approved status. */
     approved: string,
-    /** The key for a rejected status. */
+    /** The string value for a rejected status. */
     rejected: string
 }
 
 /**
  * @interface LeaveRequest
- * @description Structure for the response object of a leave request from the API.
+ * @description Structure for the response object of a leave request from the API (used for type hint, actual response might differ slightly).
  */
 interface LeaveRequest {
     /** Unique identifier of the leave request. */
     id: string;
     /** Identifier for the user who made the request. */
     user: string;
-    /** Date of the request. */
+    /** Date of the request creation. */
     date: string;
 }
 
 /**
  * @constant {StatusType} statusType
- * @description Maps status keys to their expected string values.
+ * @description Maps status keys to their expected string values (lowercase) used for assertions.
  */
 const statusType: StatusType = {
     pending: 'pending',
@@ -90,7 +96,7 @@ const statusType: StatusType = {
 
 /**
  * @constant {TypeRequest} typeRequest
- * @description Maps request type keys to their expected display names.
+ * @description Maps request type keys to their expected display names ('Sick', 'Vacation').
  */
 const typeRequest: TypeRequest = {
     sick: 'Sick',
@@ -98,55 +104,28 @@ const typeRequest: TypeRequest = {
 }
 
 /**
- * @type {Login}
- * @description An instance of the Login class to handle sign-in operations.
- */
-let login: Login;
-
-/**
- * @type {Navigation}
- * @description An instance of the Navigation class to handle navigation between tabs.
- */
-let navigation: Navigation
-
-/**
- * @type {Interception}
- * @description An instance of the Interception class to manage API request waiting.
- */
-let interception: Interception;
-
-/**
  * @type {string}
- * @description The attribute used for locating elements, typically 'data-testid' in this context.
+ * @description The attribute name used for locating elements, typically 'data-testid' in this context.
  */
 let selector: string = 'data-testid'
 
 /**
  * @type {number}
- * @description The ID of the most recently created leave request, retrieved from the POST response.
+ * @description The ID of the most recently created leave request, retrieved from the POST response payload.
  */
 let createdId: number
-
-/**
- * @description Sets up the Login, Interception, and Navigation objects before each test.
- * @param {{page: Page}} object - The Playwright test fixture object containing the page object.
- */
-test.beforeEach(async ({page}) => {
-    login = new Login(page);
-    interception = new Interception(page)
-    navigation = new Navigation(interception);
-});
-
 
 /**
  * @async
  * @function chooseTypeOfRequest
  * @description Selects a type of leave request, fills in today's date for start/end, submits the request, and retrieves the new request's ID.
- * @param {Page} page - The Playwright Page object.
+ * @param {object} object - The Playwright fixture object.
+ * @param {import('@playwright/test').Page} object.page - The Playwright Page object.
+ * @param {any} object.interception - The custom interception fixture function.
  * @param {string} selector - The visible text of the leave type to select (e.g., 'Sick Leave', 'Vacation').
  * @returns {Promise<string>} The ISO date string for "today" that was used for start/end date fields.
  */
-async function chooseTypeOfRequest(page: Page, selector: string): Promise<string> {
+async function chooseTypeOfRequest({page, interception}, selector: string): Promise<string> {
     await page.locator(selectors.requestType).click()
     await page.locator(`role=option[name="${selector}"]`).click();
 
@@ -175,13 +154,15 @@ async function chooseTypeOfRequest(page: Page, selector: string): Promise<string
 /**
  * @async
  * @function clickButtonStatus
- * @description Clicks the specified action button for the globally stored `createdId` and verifies the updated status.
- * @param {Page} page - The Playwright Page object.
- * @param {string} buttonSelector - The selector ID of the button to click (e.g., 'approve-button', 'reject-button').
- * @param {string} status - The expected final status text of the request.
+ * @description Clicks the specified action button for the globally stored `createdId` and verifies the updated status after the PUT API call.
+ * @param {object} object - The Playwright fixture object.
+ * @param {import('@playwright/test').Page} object.page - The Playwright Page object.
+ * @param {any} object.interception - The custom interception fixture function.
+ * @param {string} buttonSelector - The base data-testid selector ID of the button to click (e.g., 'approve-button', 'reject-button').
+ * @param {string} status - The expected final status text of the request (e.g., 'approved', 'rejected').
  * @returns {Promise<void>}
  */
-async function clickButtonStatus(page: Page, buttonSelector: string, status: string) {
+async function clickButtonStatus({page, interception}, buttonSelector: string, status: string) {
     // Construct the full selector using the generic attribute and the stored request ID
     const finalSelector = `[${selector}="${buttonSelector}-${createdId}"]`;
 
@@ -196,7 +177,7 @@ async function clickButtonStatus(page: Page, buttonSelector: string, status: str
         finalSelector
     );
 
-    // Locate the status chip for the request and assert its text content.
+    // Locate the status chip for the request and assert its text content. Case-insensitive check.
     const statusLocator = page.locator(`[${selector}="${selectors.requestStatus}-${createdId}"]`);
     await expect(statusLocator).toHaveText(new RegExp(status, 'i'));
 }
@@ -205,10 +186,11 @@ async function clickButtonStatus(page: Page, buttonSelector: string, status: str
  * @async
  * @function getCardData
  * @description Retrieves the type, status, and dates from the leave request card corresponding to the globally stored `createdId`.
- * @param {Page} page - The Playwright Page object.
+ * @param {object} object - The Playwright fixture object.
+ * @param {import('@playwright/test').Page} object.page - The Playwright Page object.
  * @returns {Promise<{type: string, status: string, dates: string}>} An object containing the request type, status, and dates.
  */
-async function getCardData(page: Page) {
+async function getCardData({page}) {
     // Retrieve and trim the text content for type, status, and dates using the stored request ID.
     const typeLocator = page.locator(`[${selector}="${selectors.requestName}-${createdId}"]`);
     const statusLocator = page.locator(`[${selector}="${selectors.requestStatus}-${createdId}"]`);
@@ -224,24 +206,24 @@ async function getCardData(page: Page) {
 /**
  * @async
  * @function reCheckStatus
- * @description Performs assertions to verify the request type and status.
- * @param {string} typeCard - The actual type text retrieved from the card.
- * @param {string} typeStatus - The actual status text retrieved from the card.
- * @param {string} requestType - The expected request type (e.g., 'Sick', 'Vacation').
- * @param {string} status - The expected status (e.g., 'pending', 'approved').
+ * @description Performs assertions to verify the request type and status match the expected values (case-insensitive).
+ * @param {string} actualType - The actual type text retrieved from the card.
+ * @param {string} actualStatus - The actual status text retrieved from the card.
+ * @param {string} expectedType - The expected request type (e.g., 'Sick', 'Vacation').
+ * @param {string} expectedStatus - The expected status (e.g., 'pending', 'approved').
  * @returns {Promise<void>}
  */
-async function reCheckStatus(typeCard: string, typeStatus: string, requestType: string, status: string) {
-    expect(typeCard.toLowerCase()).toBe(requestType.toLowerCase());
-    expect(typeStatus.toLowerCase()).toBe(status.toLowerCase());
+async function reCheckStatus(actualType: string, actualStatus: string, expectedType: string, expectedStatus: string) {
+    expect(actualType.toLowerCase()).toBe(expectedType.toLowerCase());
+    expect(actualStatus.toLowerCase()).toBe(expectedStatus.toLowerCase());
 }
 
 /**
  * @constant {Array<Object>} scenarios
- * @description An array of test scenarios for creating a request and then approving/rejecting it.
- * @property {string} leaveType - The display name of the leave type for selection.
+ * @description An array of test scenarios for creating a request and then approving/rejecting it, covering Sick and Vacation leave types.
+ * @property {string} leaveType - The display name of the leave type for selection in the UI.
  * @property {string} typeKey - The key corresponding to the type in `typeRequest`.
- * @property {string} action - The data-testid selector for the button to click (e.g., 'approve-button').
+ * @property {string} action - The data-testid selector base for the button to click (e.g., 'approve-button').
  * @property {string} expectedStatus - The key corresponding to the final expected status in `statusType`.
  */
 const scenarios = [
@@ -252,62 +234,65 @@ const scenarios = [
 ];
 
 /**
- * @description Test suite for 'Leave Requests' functionality.
+ * @description Test suite for 'Leave Requests' functionality, focusing on creation, status updates (Approve/Reject), and validation.
  */
-test.describe('Leave Requests', () => {
+test.describe('@smoke Leave Requests', () => {
 
     /**
      * @description Navigates to the base URL, signs in, and navigates to the 'Leave Requests' tab before each test in this suite.
-     * @param {{page: Page}} object - The Playwright test fixture object containing the page object.
+     * @param {{page: import('@playwright/test').Page, login: any, navigation: any}} object - The Playwright test fixture object containing the page, login, and navigation objects.
      */
-    test.beforeEach(async ({page}) => {
+    test.beforeEach(async ({page, login, navigation}) => {
         await page.goto('/');
         await login.signIn(USER, PASSWORD, statusCode);
-        // Use the Navigation class to go to the tab
+        // Use the Navigation class to go to the tab and wait for the initial API load
         await navigation.gotoTabRequests(navigationTabUrl, statusCode, selectors.tabLeaveRequest);
     });
 
     /**
-     * @description Generates and runs tests for each scenario: Create a request, find its ID, and approve/reject it.
+     * @description Generates and runs tests for each scenario: Create a request, check initial status, perform the action (Approve/Reject), and verify the final status.
+     * @param {object} scenario - Destructured object containing test parameters: `leaveType`, `typeKey`, `action`, `expectedStatus`.
      */
     for (const {leaveType, typeKey, action, expectedStatus} of scenarios) {
-        test(`${leaveType} request - ${action}`, async ({page}) => {
+        test(`${leaveType} request - ${action}`, async ({page, interception}) => {
 
             // 1. Create a new request. The function returns the date used and stores the new ID in `createdId`.
-            const today: string = await chooseTypeOfRequest(page, leaveType);
+            const today: string = await chooseTypeOfRequest({page, interception}, leaveType);
 
             // 2. Verify the newly created request is initially pending, and check the dates.
-            const firstCard: { type: string, status: string, dates: string } = await getCardData(page);
+            const firstCard: { type: string, status: string, dates: string } = await getCardData({page});
+            // Initial status must be pending
             await reCheckStatus(firstCard.type, firstCard.status, typeRequest[typeKey], statusType.pending);
 
-            // Check the displayed date format (assuming 'en-US' locale for date formatting)
+            // Check the displayed date format (assuming 'en-US' locale for date formatting as an example)
             const formattedDate: string = new Date(today).toLocaleDateString('en-US');
             expect(firstCard.dates).toBe(`${formattedDate} - ${formattedDate}`);
 
             // 3. Perform the action (APPROVE/REJECT) and verify its updated status using the stored ID.
-            await clickButtonStatus(page, action, statusType[expectedStatus]);
+            await clickButtonStatus({page, interception}, action, statusType[expectedStatus]);
 
             // 4. Verify the final status of the request after the action using the stored ID.
-            const lastCard: { type: string, status: string, dates: string } = await getCardData(page);
+            const lastCard: { type: string, status: string, dates: string } = await getCardData({page});
             await reCheckStatus(lastCard.type, lastCard.status, typeRequest[typeKey], statusType[expectedStatus]);
         });
     }
 
     /**
-     * @test Tests the error handling when submitting a request without selecting required data.
+     * @test Tests the error handling when attempting to submit a request without selecting required date fields.
      */
-    test('Incorrect data', async ({page}) => {
-        // Attempt to submit without selecting a type or dates.
+    test('Incorrect data validation (Missing Dates)', async ({page}) => {
+
+        // Attempt to submit without filling date inputs.
         await page.locator(selectors.submitButton).click()
         // Verify the expected error message is displayed.
         await expect(page.locator(selectors.alertMessage)).toHaveText('Please select both start and end dates.');
     })
 
     /**
-     * @test Tests the functionality to delete all existing leave requests.
+     * @test Tests the functionality to delete all existing leave requests and verifies the resulting empty state message.
      */
     test('Deleting all requests', async ({page}) => {
-        // Automatically accept the confirmation dialog when it appears
+        // Automatically accept the confirmation dialog (e.g., a modal asking "Are you sure?") when it appears
         page.once('dialog', async dialog => {
             await dialog.accept();
         });

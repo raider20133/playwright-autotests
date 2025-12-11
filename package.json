@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "E2E tests for the application using Playwright",
   "main": "index.js",
+  "type": "module",
   "directories": {
     "test": "tests"
   },

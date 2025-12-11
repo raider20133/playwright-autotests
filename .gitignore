@@ -5,3 +5,4 @@ node_modules
 /playwright-report/
 /allure-report/
 /allure-results/
+teardown**
