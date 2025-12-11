@@ -216,6 +216,9 @@ jobs:
             fi
 
             MESSAGE+=$'\n\n'"🔗 *Allure Report:* [View]($REPORT_URL)"
+          
+          # Wait for GitHub Pages to deploy echo "Waiting for 90 seconds for GitHub Pages to deploy..." 
+          sleep 90
 
             echo "Sending Telegram message for tag: $TAG"
 
