@@ -179,6 +179,10 @@ jobs:
           REPORT_URL="https://raider20133.github.io/playwright-autotests/$GITHUB_RUN_ID/"
           ENVIRONMENT="Daily Run"
 
+          # Wait before sending messages (GitHub Pages deploy)
+          echo "Waiting 90 seconds for GitHub Pages to deploy..."
+          sleep 90
+
           # Loop by tag
           for TAG in $TAGS; do
             FILTERED=$(echo "$JSON_RESULTS" | jq --arg t "$TAG" '[.[] | select(.labels[]? | (.name=="tag" and .value==$t))]')
@@ -198,12 +202,10 @@ jobs:
             MESSAGE+=$'\n'"⚪ Skipped: $SKIPPED"
             MESSAGE+=$'\n'"📈 Total: $TOTAL"
 
-            # Add failed tests list
             if [ "$FAILED" -gt 0 ]; then
               MESSAGE+=$'\n\n'"*🔥 Failed Tests:*"
 
               FAILURES=$(echo "$FILTERED" | jq -c '.[] | select(.status=="failed")')
-
               while IFS= read -r failure; do
                 TEST_NAME=$(echo "$failure" | jq -r '.fullName' | sed 's/.* › //')
                 BROWSER=$(echo "$failure" | jq -r '(.labels[] | select(.name=="browser").value)')
@@ -216,9 +218,6 @@ jobs:
             fi
 
             MESSAGE+=$'\n\n'"🔗 *Allure Report:* [View]($REPORT_URL)"
-          
-          # Wait for GitHub Pages to deploy echo "Waiting for 90 seconds for GitHub Pages to deploy..." 
-          sleep 90
 
             echo "Sending Telegram message for tag: $TAG"
 
@@ -227,7 +226,6 @@ jobs:
               -d text="$MESSAGE" \
               -d parse_mode="Markdown"
           done
-  
 
   # This job runs after the tests and cleans up old Allure reports from the gh-pages branch.
   cleanup_old_reports:

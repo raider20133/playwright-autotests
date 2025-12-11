@@ -13,6 +13,8 @@ This project contains automated end-to-end tests for a web application, written 
 ├───playwright.config.ts
 ├───README.md
 └───tests/
+    ├───fixtures/
+    │   └───fixtures.ts
     ├───integration/
     │   ├───checklist/
     │   │   └───checklist.spec.ts
@@ -21,6 +23,8 @@ This project contains automated end-to-end tests for a web application, written 
     │   └───registration/
     │       └───registration.spec.ts
     └───support/
+        ├───globalTeardown/
+        │   └───globalTeardown.ts
         ├───interception/
         │   └───interception.ts
         ├───login/
@@ -31,11 +35,13 @@ This project contains automated end-to-end tests for a web application, written 
 
 The project follows a structured approach to keep tests organized and maintainable:
 
+- `tests/fixtures/fixtures.ts`: Contains custom fixtures that provide test contexts, such as page objects or helper classes.
 - `tests/integration/`: Contains the main test suites, categorized by application feature (e.g., `checklist`, `leaveRequests`, `registration`).
 - `tests/support/`: Contains reusable helper classes and utilities that abstract common functionalities:
     - `login/login.ts`: A class to handle user authentication.
     - `interception/interception.ts`: A utility for intercepting and waiting for API requests, making tests more stable.
     - `tabNavigation/tabNavigation.ts`: A class for handling navigation between different parts of the application.
+    - `globalTeardown/globalTeardown.ts`: A script that runs after all tests to clean up the test environment.
 - `playwright.config.ts`: The main configuration file for Playwright, including test settings, reporters, and browser configurations.
 - `package.json`: Defines project dependencies and scripts.
 
@@ -74,6 +80,28 @@ To run the tests, use the following npm scripts:
   ```bash
   npm run report
   ```
+
+## Test Tagging
+
+Tests are tagged to allow running specific suites. The following tags are available:
+- `@smoke`: For basic, critical path tests.
+- `@E2E`: For more comprehensive end-to-end tests.
+
+You can run tests with a specific tag using the `--grep` flag:
+
+```bash
+# Run all smoke tests
+npx playwright test --grep @smoke
+
+# Run all E2E tests
+npx playwright test --grep @E2E
+```
+
+## Global Teardown
+
+A global teardown script is configured in `tests/support/globalTeardown/globalTeardown.ts`. This script runs automatically after all test suites have finished.
+
+Its primary purpose is to clean up the application state by deleting any data created during the test run (e.g., tasks, leave requests). This ensures that each full test run starts with a clean environment, preventing failures from leftover data.
 
 ## CI/CD and Reporting
 
