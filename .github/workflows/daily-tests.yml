@@ -3,7 +3,7 @@ name: Playwright CI with Allure
 on:
   # Schedule daily runs at 06:00 UTC
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 1 * * *"
   # Allow manual triggering of the workflow
   workflow_dispatch:
 
