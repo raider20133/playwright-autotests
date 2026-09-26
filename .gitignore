@@ -1,8 +1,9 @@
-.idea
-/playwright-screenshots/
-node_modules
+node_modules/
 .env
+.idea/
+/test-results/
 /playwright-report/
-/allure-report/
 /allure-results/
-teardown**
+/allure-report/
+/blob-report/
+/playwright-screenshots/

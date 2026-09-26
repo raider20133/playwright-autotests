@@ -1,143 +1,117 @@
-# Playwright Test Automation Project
+# Chronos autotests
 
-![Test Run Demo](media/demo.gif)
+[![Autotests](https://github.com/raider20133/playwright-autotests/actions/workflows/daily-tests.yml/badge.svg)](https://github.com/raider20133/playwright-autotests/actions/workflows/daily-tests.yml)
+[Latest Allure report](https://raider20133.github.io/playwright-autotests/latest/)
 
-This project contains automated end-to-end tests for a web application, written using [Playwright](https://playwright.dev/).
+API and UI test automation for **Chronos**, a personal management app (checklist, leave requests,
+service tracker, wish lists with sharing). React + MUI frontend, Express + PostgreSQL backend, both on Render.
 
-## Project Structure
+**208 tests** per run: 127 API tests plus 27 UI tests in Chromium, Firefox and WebKit.
+The suite runs in parallel, needs only one secret, and cleans up after itself.
+
+| Area | API | UI |
+|---|---:|---:|
+| Auth — login, registration, password reset | 11 | 6 |
+| Security — auth on every route, forged tokens, cross-user access | 41 | – |
+| Checklist — tasks, filters, month carryover | 23 | 10 |
+| Leave requests | 13 | 7 |
+| Service tracker and scheduled events | 12 | – |
+| Wish lists and items | 13 | 4 |
+| Wish list sharing (view-only access) | 6 | incl. above |
+| Profile and settings | 8 | – |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph tests
+        A[tests/api] --> F
+        U[tests/ui] --> F
+    end
+    F[fixtures] --> C[API clients]
+    F --> P[page objects]
+    F --> S[seed + cleanup]
+    F --> Q[QA user pool]
+    C --> Z[zod contracts]
+    S --> C
+    Q --> C
+    P --> APP((Chronos UI))
+    C --> API((Chronos API))
+```
 
 ```
-/
-├───.gitignore
-├───package.json
-├───playwright.config.ts
-├───README.md
-└───tests/
-    ├───fixtures/
-    │   └───fixtures.ts
-    ├───integration/
-    │   ├───checklist/
-    │   │   └───checklist.spec.ts
-    │   ├───leaveRequests/
-    │   │   └───leaveRequests.spec.ts
-    │   └───registration/
-    │       └───registration.spec.ts
-    └───support/
-        ├───globalTeardown/
-        │   └───globalTeardown.ts
-        ├───interception/
-        │   └───interception.ts
-        ├───login/
-        │   └───login.ts
-        └───tabNavigation/
-            └───tabNavigation.ts
+src/
+  api/        typed clients per resource, HTTP wrapper, contract assertions
+  schemas/    zod response contracts
+  fixtures/   worker users, seed with auto-cleanup, signed-in browser, page objects
+  pages/      page objects (login, app shell, checklist, leave, wish list)
+  users/      self-provisioned QA users
+  data/       builders, dates, forged JWTs, per-user purge
+  setup/      global setup that wakes the Render services
+tests/
+  api/        contract, validation, security and business-rule tests
+  ui/         user flows, each checked against the API afterwards
 ```
 
-The project follows a structured approach to keep tests organized and maintainable:
+## Design decisions
 
-- `tests/fixtures/fixtures.ts`: Contains custom fixtures that provide test contexts, such as page objects or helper classes.
-- `tests/integration/`: Contains the main test suites, categorized by application feature (e.g., `checklist`, `leaveRequests`, `registration`).
-- `tests/support/`: Contains reusable helper classes and utilities that abstract common functionalities:
-    - `login/login.ts`: A class to handle user authentication.
-    - `interception/interception.ts`: A utility for intercepting and waiting for API requests, making tests more stable.
-    - `tabNavigation/tabNavigation.ts`: A class for handling navigation between different parts of the application.
-    - `globalTeardown/globalTeardown.ts`: A script that runs after all tests to clean up the test environment.
-- `playwright.config.ts`: The main configuration file for Playwright, including test settings, reporters, and browser configurations.
-- `package.json`: Defines project dependencies and scripts.
+- **Self-provisioned, isolated users.** Each project and parallel slot gets its own user
+  (`qa_auto_chromium_owner_1`). The fixture registers it, or resets its password with the
+  registration code if it already exists, and purges its data before the first test. So the
+  suite needs no stored credentials, and destructive flows ("delete all", "close month") run
+  in parallel without touching anyone else's data.
+- **Seed through the API, test through the UI.** UI tests create their data through the API,
+  then drive only the behaviour under test in the browser. After a UI action, the test checks
+  the API to confirm the change was actually saved.
+- **Undo stack cleanup.** Every seeded entity registers its own deletion, which runs in reverse
+  order after the test. A failed cleanup is reported as an annotation. Leftovers are purged on
+  the next run anyway.
+- **Hand-written contracts.** Every response is validated with zod, including responses from
+  seeding. A backend change that breaks the contract fails a test instead of passing silently.
+- **Waiting for the network, not for time.** Page objects start listening for the API response
+  before the click that triggers it. There are no `waitForTimeout` calls, and lint enforces it.
+  Firefox and WebKit revalidate repeated GETs, so a GET wait also accepts `304`.
+- **Known bugs are executable.** They are marked `test.fail()` with the reason. The run stays
+  green, and the test flips to red as soon as someone fixes the bug, prompting the marker's removal.
 
-## Features Covered
+## Bugs found
 
-The automated tests cover the following application features:
-- **User Authentication**: Sign-in, password reset, and handling of invalid login attempts.
-- **Leave Requests**: Creation of sick and vacation leave requests, approving/rejecting requests, and validating statuses.
-- **Checklist**: Creation of "Free" and "Paid" tasks, task validation, and the "close month" functionality to carry over tasks.
+| # | Finding | Test |
+|---|---|---|
+| 1 | **IDOR:** any user can attach an event to another user's service (`POST /api/events` does not check ownership) | `security.spec.ts` |
+| 2 | A negative price, an unsupported currency or an unknown type returns **500** instead of 400 (the DB CHECK constraint fails) | `tasks.spec.ts` |
+| 3 | An unknown leave type returns **500** instead of 400 | `leave.spec.ts` |
+| 4 | A leave request can end before it starts | `leave.spec.ts` |
+| 5 | 500 responses expose raw PostgreSQL error messages to the client | seen in 2–3 |
+| 6 | a11y: header icon buttons (settings, profile, logout) have no accessible name | `app-shell.ts` |
 
-## How to Run Tests
-
-To run the tests, use the following npm scripts:
-
-- **Run all tests (headless):**
-  ```bash
-  npm test
-  ```
-
-- **Run all tests in headed mode (shows the browser):**
-  ```bash
-  npm run test:headed
-  ```
-
-- **Run a specific test file:**
-  ```bash
-  npx playwright test tests/integration/leaveRequests/leaveRequests.spec.ts
-  ```
-
-- **Run tests that match a specific title (grep):**
-  ```bash
-  npx playwright test -g "Validation creating task"
-  ```
-
-- **View the HTML test report:**
-  ```bash
-  npm run report
-  ```
-
-## Test Tagging
-
-Tests are tagged to allow running specific suites. The following tags are available:
-- `@smoke`: For basic, critical path tests.
-- `@E2E`: For more comprehensive end-to-end tests.
-
-You can run tests with a specific tag using the `--grep` flag:
+## Running locally
 
 ```bash
-# Run all smoke tests
-npx playwright test --grep @smoke
-
-# Run all E2E tests
-npx playwright test --grep @E2E
+npm ci
+npx playwright install
+cp .env.example .env        # set REGISTRATION_CODE
+npm test                    # everything
+npm run test:api            # API only (~20 s)
+npm run test:smoke          # @smoke across projects
+npx playwright test --project=chromium --ui
 ```
 
-## Global Teardown
+`npm run typecheck` and `npm run lint` run the same checks as CI (TypeScript strict and `eslint-plugin-playwright`).
 
-A global teardown script is configured in `tests/support/globalTeardown/globalTeardown.ts`. This script runs automatically after all test suites have finished.
+## CI
 
-Its primary purpose is to clean up the application state by deleting any data created during the test run (e.g., tasks, leave requests). This ensures that each full test run starts with a clean environment, preventing failures from leftover data.
+`.github/workflows/daily-tests.yml` runs on every push and PR to `master`, and nightly.
 
-## CI/CD and Reporting
+1. **Typecheck and lint.**
+2. **Tests** in a matrix: `api`, `chromium`, `firefox`, `webkit`. A failing test fails the job.
+   Traces, videos and the HTML report are uploaded on failure.
+3. **Report:**
+   - merges the Allure results and keeps the trend history;
+   - publishes the report to GitHub Pages (per run and `latest`);
+   - writes a per-project summary to the job page;
+   - posts it to Telegram.
+4. **Cleanup:** removes reports older than 30 days.
 
-This project uses GitHub Actions for Continuous Integration and Allure for detailed test reporting.
-
-### GitHub Actions Workflow
-
-A GitHub Actions workflow is configured in `.github/workflows/daily-tests.yml` to automate test execution. This workflow has the following features:
-
-- **Daily Execution**: Tests are automatically run every day at 06:00 UTC.
-- **Manual Trigger**: You can also trigger the workflow manually from the Actions tab in the GitHub repository.
-- **Allure Report Generation**: After the tests run, an Allure report is generated.
-- **Deployment to GitHub Pages**: The generated Allure report is automatically deployed to GitHub Pages, providing a live dashboard of the test results.
-
-### Allure Test Report
-
-The Allure Framework is used to create detailed and interactive test reports. These reports provide a clear overview of the test results, including:
-
--   A detailed breakdown of test statuses (passed, failed, skipped).
--   Historical trends of test runs.
--   Screenshots and other artifacts for failed tests.
-
-The link to the latest Allure report is dynamically generated for each run and sent via Telegram notification.
-
-### Telegram Notifications
-
-After each workflow run, a notification is automatically sent to a designated Telegram chat. This provides an immediate summary of the test results.
-
-The notification includes:
-- **Test Summary**: A quick overview of the number of passed, failed, and skipped tests.
-- **Timestamp**: The start time of the test run.
-- **Link to Allure Report**: A unique, direct link to the full Allure report for that specific run, hosted on GitHub Pages.
-
-#### Configuration
-
-To enable Telegram notifications, you need to configure the following secrets in your GitHub repository's settings (`Settings > Secrets and variables > Actions`):
-
--   `TELEGRAM_TOKEN`: The authentication token for your Telegram bot.
--   `TELEGRAM_CHAT_ID`: The unique identifier for the target chat where notifications will be sent.
+Secrets: `BASE_URL`, `API_BASE_URL`, `REGISTRATION_CODE` (or the legacy `SECRET_PASSWORD`),
+plus optional `GH_PAT`, `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` for publishing.

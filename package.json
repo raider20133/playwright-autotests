@@ -1,28 +1,37 @@
 {
-  "name": "playwrigth",
-  "version": "1.0.0",
-  "description": "E2E tests for the application using Playwright",
-  "main": "index.js",
+  "name": "chronos-autotests",
+  "version": "2.0.0",
+  "description": "API + UI test automation for the Chronos management app, built with Playwright and TypeScript",
+  "private": true,
   "type": "module",
-  "directories": {
-    "test": "tests"
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
+    "pretest": "node -e \"require('fs').rmSync('allure-results',{recursive:true,force:true})\"",
     "test": "playwright test",
-    "test:headed": "playwright test --headed",
+    "test:api": "playwright test --project=api",
+    "test:ui": "playwright test --project=chromium",
+    "test:smoke": "playwright test --grep @smoke",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "report": "playwright show-report",
-    "deploy:allure": "gh-pages -d allure-report -b gh-pages -r https://github.com/raider20133/playwright-autotests.git"
+    "allure:generate": "allure generate allure-results --clean -o allure-report",
+    "deploy:allure": "gh-pages -d allure-report -b gh-pages"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "dotenv": "^17.2.3"
-  },
+  "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.19.0",
     "allure-commandline": "^2.34.1",
     "allure-playwright": "^3.4.3",
-    "gh-pages": "^6.1.1"
+    "dotenv": "^17.2.3",
+    "eslint": "^9.39.1",
+    "eslint-plugin-playwright": "^2.12.0",
+    "gh-pages": "^6.3.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.1",
+    "zod": "^4.6.5"
   }
 }
