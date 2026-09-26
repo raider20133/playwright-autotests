@@ -9,15 +9,10 @@ on:
     branches: [master]
   workflow_dispatch:
 
-# QA users are keyed by project + worker slot, so two runs at once would share users
-concurrency:
-  group: autotests
-  cancel-in-progress: false
-
 env:
   BASE_URL: ${{ secrets.BASE_URL }}
   API_BASE_URL: ${{ secrets.API_BASE_URL }}
-  REGISTRATION_CODE: ${{ secrets.REGISTRATION_CODE || secrets.SECRET_PASSWORD }}
+  SECRET_PASSWORD: ${{ secrets.SECRET_PASSWORD }}
 
 jobs:
   quality:

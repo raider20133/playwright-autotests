@@ -7,7 +7,7 @@ export default defineConfig({
     fullyParallel: true,
     forbidOnly: isCI,
     retries: isCI ? 1 : 0,
-    // Each parallel slot gets its own QA user, so the worker count is also the size of the user pool
+    // Kept low on purpose: the app runs on Render's free tier
     workers: 3,
     timeout: 45_000,
     expect: {timeout: 8_000},

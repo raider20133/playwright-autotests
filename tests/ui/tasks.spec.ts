@@ -18,17 +18,15 @@ test.describe('Checklist', {tag: '@ui'}, () => {
         // The UI said it worked — check the backend agrees
         const saved = expectContract(await api.tasks.list(monthStart()), 200, z.array(Task)).find(t => t.id === task.id);
         expect(saved).toMatchObject({name, type: 'free', is_done: false});
-        await api.tasks.remove(task.id);
     });
 
     for (const currency of ['UAH', 'USD', 'EUR'] as const) {
-        test(`a paid task shows its price in ${currency}`, async ({app, tasksPage, api}) => {
+        test(`a paid task shows its price in ${currency}`, async ({app, tasksPage}) => {
             await app.open('checklist');
             const task = await tasksPage.addTask({name: `QA ui paid ${uid()}`, type: 'Paid', price: '120', currency});
 
             await expect(tasksPage.item(task.id)).toContainText(`${symbols[currency]}120.00`);
             expect(task).toMatchObject({price: '120.00', currency});
-            await api.tasks.remove(task.id);
         });
     }
 

@@ -24,10 +24,3 @@ export function expectMessage(res: ApiResponse, status: number, message: string 
     else expect(body.message).toMatch(message);
 }
 
-/**
- * For known-bug tests that expect a rejection: if the API accepts the input after all,
- * delete what it created so the check never leaks data.
- */
-export async function discardIfCreated<T>(res: ApiResponse, remove: (body: T) => Promise<unknown>): Promise<void> {
-    if (res.status === 201) await remove(res.body as T);
-}

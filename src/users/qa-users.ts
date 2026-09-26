@@ -3,6 +3,7 @@ import {randomBytes} from 'node:crypto';
 import {createApi} from '../api/clients';
 import {expectContract, expectStatus} from '../api/assertions';
 import {LoginResponse, Me} from '../schemas';
+import {uid} from '../data/builders';
 import {env} from '../config/env';
 
 export interface QaUser {
@@ -12,32 +13,21 @@ export interface QaUser {
     token: string;
 }
 
-/**
- * Self-provisioned test users: register the user, or — if it already exists — reset its
- * password with the registration code. The suite therefore needs no stored credentials,
- * and every run starts from a password only it knows.
- */
-export async function ensureUser(http: APIRequestContext, username: string): Promise<QaUser> {
+/** Registers a brand-new user for one test. Nothing is shared between tests. */
+export async function createUser(http: APIRequestContext): Promise<QaUser> {
     const {auth} = createApi(http);
+    const username = `qa_auto_${uid()}`;
     const password = `qa-${randomBytes(9).toString('base64url')}`;
-    const registrationCode = env.registrationCode;
 
-    const registered = await auth.register({username, password, registrationCode});
-    if (registered.status === 409) {
-        expectStatus(await auth.resetPassword({username, registrationCode, newPassword: password}), 200);
-    } else {
-        expectStatus(registered, 201);
-    }
-
+    expectStatus(await auth.register({username, password, registrationCode: env.registrationCode}), 201);
     const {token} = expectContract(await auth.login({username, password}), 200, LoginResponse);
     const me = expectContract(await createApi(http, token).user.me(), 200, Me);
     return {id: me.id, username, password, token};
 }
 
-/**
- * One user per project and parallel slot, e.g. "qa_auto_chromium_1". Workers never share
- * data, so "delete all" and "close month" flows are safe to run in parallel.
- */
-export function workerUsername(project: string, parallelIndex: number, role = 'owner'): string {
-    return `qa_auto_${project}_${role}_${parallelIndex}`.toLowerCase();
+/** Deletes the user; ON DELETE CASCADE removes everything the test created. */
+export async function deleteUser(http: APIRequestContext, user: QaUser): Promise<void> {
+    const res = await createApi(http, user.token).user.deleteAccount(user.password);
+    // 404: the test itself already deleted the account
+    if (res.status !== 404) expectStatus(res, 204);
 }

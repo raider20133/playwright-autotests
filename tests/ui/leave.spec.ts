@@ -19,7 +19,6 @@ test.describe('Leave requests', {tag: '@ui'}, () => {
 
             const saved = expectContract(await api.leave.list(), 200, z.array(LeaveRequest)).find(r => r.id === id);
             expect(saved).toMatchObject({type, status: 'pending'});
-            await api.leave.remove(id);
         });
     }
 

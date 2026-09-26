@@ -6,19 +6,20 @@
 API and UI test automation for **Chronos**, a personal management app (checklist, leave requests,
 service tracker, wish lists with sharing). React + MUI frontend, Express + PostgreSQL backend, both on Render.
 
-**208 tests** per run: 127 API tests plus 27 UI tests in Chromium, Firefox and WebKit.
-The suite runs in parallel, needs only one secret, and cleans up after itself.
+**213 tests** per run: 132 API tests plus 27 UI tests in Chromium, Firefox and WebKit.
+Every test is isolated: it registers its own user, runs, and deletes the user with all its data.
+The suite runs in parallel and needs only one secret.
 
 | Area | API | UI |
 |---|---:|---:|
 | Auth — login, registration, password reset | 11 | 6 |
-| Security — auth on every route, forged tokens, cross-user access | 41 | – |
+| Security — auth on every route, forged tokens, cross-user access | 42 | – |
 | Checklist — tasks, filters, month carryover | 23 | 10 |
 | Leave requests | 13 | 7 |
 | Service tracker and scheduled events | 12 | – |
 | Wish lists and items | 13 | 4 |
 | Wish list sharing (view-only access) | 6 | incl. above |
-| Profile and settings | 8 | – |
+| Profile, settings, account deletion | 12 | – |
 
 ## Architecture
 
@@ -30,8 +31,8 @@ flowchart LR
     end
     F[fixtures] --> C[API clients]
     F --> P[page objects]
-    F --> S[seed + cleanup]
-    F --> Q[QA user pool]
+    F --> S[seed]
+    F --> Q[throwaway users]
     C --> Z[zod contracts]
     S --> C
     Q --> C
@@ -43,11 +44,11 @@ flowchart LR
 src/
   api/        typed clients per resource, HTTP wrapper, contract assertions
   schemas/    zod response contracts
-  fixtures/   worker users, seed with auto-cleanup, signed-in browser, page objects
+  fixtures/   per-test users, API seeding, signed-in browser, page objects
   pages/      page objects (login, app shell, checklist, leave, wish list)
-  users/      self-provisioned QA users
-  data/       builders, dates, forged JWTs, per-user purge
-  setup/      global setup that wakes the Render services
+  users/      create and delete throwaway users
+  data/       builders, dates, forged JWTs
+  setup/      wakes the Render services, checks that user deletion is deployed
 tests/
   api/        contract, validation, security and business-rule tests
   ui/         user flows, each checked against the API afterwards
@@ -55,17 +56,17 @@ tests/
 
 ## Design decisions
 
-- **Self-provisioned, isolated users.** Each project and parallel slot gets its own user
-  (`qa_auto_chromium_owner_1`). The fixture registers it, or resets its password with the
-  registration code if it already exists, and purges its data before the first test. So the
-  suite needs no stored credentials, and destructive flows ("delete all", "close month") run
-  in parallel without touching anyone else's data.
+- **One throwaway user per test.** The `qaUser` fixture registers a fresh user
+  (`qa_auto_<unique id>`) with the registration code and a random password, so no credentials
+  are stored anywhere. After the test it deletes the user through `DELETE /api/users/me`. The
+  database cascades the delete to every task, request, service and wish list the test created.
+  Tests share nothing, so they run in any order and in parallel. Destructive flows ("delete
+  all", "close month") never touch real data. Sharing tests get a second user (`peerUser`) the
+  same way. If the API cannot delete users, global setup stops the run before any test starts,
+  instead of leaving users behind.
 - **Seed through the API, test through the UI.** UI tests create their data through the API,
   then drive only the behaviour under test in the browser. After a UI action, the test checks
   the API to confirm the change was actually saved.
-- **Undo stack cleanup.** Every seeded entity registers its own deletion, which runs in reverse
-  order after the test. A failed cleanup is reported as an annotation. Leftovers are purged on
-  the next run anyway.
 - **Hand-written contracts.** Every response is validated with zod, including responses from
   seeding. A backend change that breaks the contract fails a test instead of passing silently.
 - **Waiting for the network, not for time.** Page objects start listening for the API response
@@ -84,13 +85,14 @@ tests/
 | 4 | A leave request can end before it starts | `leave.spec.ts` |
 | 5 | 500 responses expose raw PostgreSQL error messages to the client | seen in 2–3 |
 | 6 | a11y: header icon buttons (settings, profile, logout) have no accessible name | `app-shell.ts` |
+| 7 | Schema drift: `leave_requests.is_archived` is used by the API and UI but missing from the table definition, so a fresh database fails the yearly reset | `leave.spec.ts` |
 
 ## Running locally
 
 ```bash
 npm ci
 npx playwright install
-cp .env.example .env        # set REGISTRATION_CODE
+cp .env.example .env        # set SECRET_PASSWORD (the registration code)
 npm test                    # everything
 npm run test:api            # API only (~20 s)
 npm run test:smoke          # @smoke across projects
@@ -113,5 +115,8 @@ npx playwright test --project=chromium --ui
    - posts it to Telegram.
 4. **Cleanup:** removes reports older than 30 days.
 
-Secrets: `BASE_URL`, `API_BASE_URL`, `REGISTRATION_CODE` (or the legacy `SECRET_PASSWORD`),
-plus optional `GH_PAT`, `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` for publishing.
+Secrets: `BASE_URL`, `API_BASE_URL`, `SECRET_PASSWORD`, plus optional `GH_PAT`,
+`TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` for publishing.
+
+`scripts/delete-legacy-qa-users.mjs` is a one-off script. It deletes the pooled `qa_auto_*`
+users left behind by the previous version of the suite.

@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {test, expect} from '@src/fixtures';
-import {discardIfCreated, expectContract, expectMessage, expectStatus} from '@src/api/assertions';
+import {expectContract, expectMessage, expectStatus} from '@src/api/assertions';
 import {build} from '@src/data/builders';
 import {isoDay} from '@src/data/dates';
 import {LeaveRequest} from '@src/schemas';
@@ -74,7 +74,6 @@ test.describe('Leave requests API', {tag: '@api'}, () => {
         test('an end date before the start date should be rejected', async ({api}) => {
             test.fail(true, 'Known bug: date range is not validated, the request is created');
             const res = await api.leave.create(build.leave({start_date: isoDay(10), end_date: isoDay(2)}));
-            await discardIfCreated<{leaveId: number}>(res, body => api.leave.remove(body.leaveId));
             expectStatus(res, 400);
         });
 

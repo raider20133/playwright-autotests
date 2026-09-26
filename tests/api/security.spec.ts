@@ -1,6 +1,6 @@
 import type {APIRequestContext} from '@playwright/test';
 import {test, expect} from '@src/fixtures';
-import {discardIfCreated, expectStatus} from '@src/api/assertions';
+import {expectStatus} from '@src/api/assertions';
 import {BaseApi, type HttpMethod} from '@src/api/http';
 import {build} from '@src/data/builders';
 import {forgedToken, unsignedToken} from '@src/data/tokens';
@@ -21,6 +21,7 @@ const protectedRoutes: Array<[HttpMethod, string]> = [
     ['PUT', '/api/users/me/tab-order'],
     ['PUT', '/api/settings'],
     ['PUT', '/api/user/password'],
+    ['DELETE', '/api/users/me'],
     ['GET', '/api/leave'],
     ['POST', '/api/leave'],
     ['PUT', '/api/leave/1/status'],
@@ -118,7 +119,6 @@ test.describe('API security', {tag: ['@api', '@security']}, () => {
             test.fail(true, 'Known bug (IDOR): POST /api/events does not check that serviceId belongs to the caller');
             const service = await seed.service();
             const res = await peerApi.services.createEvent({serviceId: service.id, eventDate: new Date().toISOString()});
-            await discardIfCreated<{id: number}>(res, body => peerApi.services.removeEvent(body.id));
             expectStatus(res, 404);
         });
     });

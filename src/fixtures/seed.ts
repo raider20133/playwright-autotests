@@ -2,48 +2,36 @@ import type {Api, LeaveInput, ServiceInput, TaskInput, WishItemInput} from '../a
 import {expectContract} from '../api/assertions';
 import {build} from '../data/builders';
 import {LeaveCreated, ScheduledEvent, Service, Task, WishList, WishListItem} from '../schemas';
-import type {Cleanup} from './cleanup';
 
 /**
- * Creates test data through the API (fast, no UI) and registers its deletion.
- * Every call validates the response contract, so seeding doubles as a contract check.
+ * Creates test data through the API — fast, no UI. Every call validates the response
+ * contract, so seeding doubles as a contract check. No cleanup needed: deleting the
+ * test's user removes all of it.
  */
-export function createSeed(api: Api, cleanup: Cleanup) {
+export function createSeed(api: Api) {
     return {
         async task(input: TaskInput = build.freeTask()) {
-            const task = expectContract(await api.tasks.create(input), 201, Task);
-            cleanup.add(`task ${task.id}`, () => api.tasks.remove(task.id));
-            return task;
+            return expectContract(await api.tasks.create(input), 201, Task);
         },
 
         async leave(input: LeaveInput = build.leave()) {
-            const {leaveId} = expectContract(await api.leave.create(input), 201, LeaveCreated);
-            cleanup.add(`leave ${leaveId}`, () => api.leave.remove(leaveId));
-            return leaveId;
+            return expectContract(await api.leave.create(input), 201, LeaveCreated).leaveId;
         },
 
         async service(input: ServiceInput = build.service()) {
-            const service = expectContract(await api.services.create(input), 201, Service);
-            cleanup.add(`service ${service.id}`, () => api.services.remove(service.id));
-            return service;
+            return expectContract(await api.services.create(input), 201, Service);
         },
 
         async event(serviceId: number, eventDate = new Date(Date.now() + 86_400_000).toISOString()) {
-            const event = expectContract(await api.services.createEvent({serviceId, eventDate}), 201, ScheduledEvent);
-            cleanup.add(`event ${event.id}`, () => api.services.removeEvent(event.id));
-            return event;
+            return expectContract(await api.services.createEvent({serviceId, eventDate}), 201, ScheduledEvent);
         },
 
         async wishlist(name = build.wishlistName()) {
-            const list = expectContract(await api.wishlists.create(name), 201, WishList);
-            cleanup.add(`wishlist ${list.id}`, () => api.wishlists.remove(list.id));
-            return list;
+            return expectContract(await api.wishlists.create(name), 201, WishList);
         },
 
         async wishItem(wishlistId: number, input: WishItemInput = build.wishItem()) {
-            const item = expectContract(await api.wishlists.addItem(wishlistId, input), 201, WishListItem);
-            cleanup.add(`wish item ${item.id}`, () => api.wishlists.removeItem(item.id));
-            return item;
+            return expectContract(await api.wishlists.addItem(wishlistId, input), 201, WishListItem);
         },
     };
 }

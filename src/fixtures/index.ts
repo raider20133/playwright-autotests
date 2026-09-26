@@ -1,25 +1,23 @@
 import {test as base, expect, type APIRequestContext} from '@playwright/test';
 import {createApi, type Api} from '../api/clients';
 import {env} from '../config/env';
-import {purgeUserData} from '../data/purge';
-import {ensureUser, workerUsername, type QaUser} from '../users/qa-users';
+import {createUser, deleteUser, type QaUser} from '../users/qa-users';
 import {AppShell} from '../pages/app-shell';
 import {LoginPage} from '../pages/login.page';
 import {TasksPage} from '../pages/tasks.page';
 import {LeavePage} from '../pages/leave.page';
 import {WishlistPage} from '../pages/wishlist.page';
-import {Cleanup} from './cleanup';
 import {createSeed, type Seed} from './seed';
 
 type WorkerFixtures = {
     apiContext: APIRequestContext;
-    /** This worker's own user; its data is purged when the worker starts. */
-    qaUser: QaUser;
-    /** A second user, for sharing and cross-user access tests. Created only when a test asks for it. */
-    peerUser: QaUser;
 };
 
 type TestFixtures = {
+    /** A fresh user created for this test only and deleted, with all its data, afterwards. */
+    qaUser: QaUser;
+    /** A second throwaway user, for sharing and cross-user access tests. Created only when asked for. */
+    peerUser: QaUser;
     /** Start UI tests already signed in as qaUser (token injected into localStorage). */
     authenticated: boolean;
     api: Api;
@@ -34,12 +32,6 @@ type TestFixtures = {
     wishlistPage: WishlistPage;
 };
 
-const provision = async (http: APIRequestContext, username: string) => {
-    const user = await ensureUser(http, username);
-    await purgeUserData(createApi(http, user.token));
-    return user;
-};
-
 export const test = base.extend<TestFixtures, WorkerFixtures>({
     apiContext: [async ({playwright}, use) => {
         const context = await playwright.request.newContext({baseURL: env.apiUrl, timeout: 30_000});
@@ -47,13 +39,17 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         await context.dispose();
     }, {scope: 'worker'}],
 
-    qaUser: [async ({apiContext}, use, workerInfo) => {
-        await use(await provision(apiContext, workerUsername(workerInfo.project.name, workerInfo.parallelIndex)));
-    }, {scope: 'worker'}],
+    qaUser: async ({apiContext}, use) => {
+        const user = await createUser(apiContext);
+        await use(user);
+        await deleteUser(apiContext, user);
+    },
 
-    peerUser: [async ({apiContext}, use, workerInfo) => {
-        await use(await provision(apiContext, workerUsername(workerInfo.project.name, workerInfo.parallelIndex, 'peer')));
-    }, {scope: 'worker'}],
+    peerUser: async ({apiContext}, use) => {
+        const user = await createUser(apiContext);
+        await use(user);
+        await deleteUser(apiContext, user);
+    },
 
     authenticated: [true, {option: true}],
 
@@ -61,17 +57,8 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     peerApi: async ({apiContext, peerUser}, use) => use(createApi(apiContext, peerUser.token)),
     anonApi: async ({apiContext}, use) => use(createApi(apiContext)),
 
-    seed: async ({api}, use, testInfo) => {
-        const cleanup = new Cleanup();
-        await use(createSeed(api, cleanup));
-        await cleanup.run(testInfo);
-    },
-
-    peerSeed: async ({peerApi}, use, testInfo) => {
-        const cleanup = new Cleanup();
-        await use(createSeed(peerApi, cleanup));
-        await cleanup.run(testInfo);
-    },
+    seed: async ({api}, use) => use(createSeed(api)),
+    peerSeed: async ({peerApi}, use) => use(createSeed(peerApi)),
 
     context: async ({context, authenticated, qaUser}, use) => {
         if (authenticated) {

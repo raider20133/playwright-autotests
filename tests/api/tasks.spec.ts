@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {test, expect} from '@src/fixtures';
-import {discardIfCreated, expectContract, expectMessage, expectStatus} from '@src/api/assertions';
+import {expectContract, expectMessage, expectStatus} from '@src/api/assertions';
 import {build} from '@src/data/builders';
 import {monthStart} from '@src/data/dates';
 import {Task} from '@src/schemas';
@@ -47,7 +47,6 @@ test.describe('Tasks API', {tag: '@api'}, () => {
             test(`${title} should be a 400, not a 500`, async ({api}) => {
                 test.fail(true, 'Known bug: input is not validated, the DB CHECK constraint fails with 500');
                 const res = await api.tasks.create({...build.freeTask(), ...overrides});
-                await discardIfCreated<{id: number}>(res, body => api.tasks.remove(body.id));
                 expectStatus(res, 400);
             });
         }

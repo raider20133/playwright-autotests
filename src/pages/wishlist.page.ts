@@ -27,7 +27,11 @@ export class WishlistPage extends BasePage {
     }
 
     async select(id: number): Promise<void> {
-        await this.expectRequest('GET', `/api/wishlists/${id}/items`, 200, () => this.tab(id).click());
+        const tab = this.tab(id);
+        await expect(tab).toBeVisible();
+        // The first tab is selected on load and its items are already fetched; clicking it again sends nothing
+        if (await tab.getAttribute('aria-selected') === 'true') return;
+        await this.expectRequest('GET', `/api/wishlists/${id}/items`, 200, () => tab.click());
     }
 
     async addItem(listId: number, item: {name: string; amount?: string; currency?: keyof typeof currencyLabel}): Promise<WishListItem> {

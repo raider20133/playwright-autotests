@@ -1,6 +1,7 @@
+import {z} from 'zod';
 import {test, expect} from '@src/fixtures';
 import {expectContract, expectMessage, expectStatus} from '@src/api/assertions';
-import {LoginResponse, Me} from '@src/schemas';
+import {LoginResponse, Me, WishListEntry} from '@src/schemas';
 import {env} from '@src/config/env';
 
 test.describe('Profile and settings API', {tag: '@api'}, () => {
@@ -55,6 +56,36 @@ test.describe('Profile and settings API', {tag: '@api'}, () => {
             qaUser.password = newPassword;
 
             expectContract(await anonApi.auth.login({username: qaUser.username, password: newPassword}), 200, LoginResponse);
+        });
+    });
+
+    test.describe('delete account', () => {
+        test('requires the password as confirmation', async ({api}) => {
+            expectMessage(await api.user.deleteAccount(), 400, 'Password is required to delete the account');
+        });
+
+        test('rejects a wrong password and keeps the account', async ({api}) => {
+            expectMessage(await api.user.deleteAccount('wrong-password'), 401, 'Invalid password');
+            expectStatus(await api.user.me(), 200);
+        });
+
+        test('deletes the account: login fails and the old token finds no user', async ({api, anonApi, qaUser}) => {
+            expectStatus(await api.user.deleteAccount(qaUser.password), 204);
+
+            expectMessage(await anonApi.auth.login({username: qaUser.username, password: qaUser.password}), 401, 'Invalid credentials');
+            expectMessage(await api.user.me(), 404, 'User not found');
+        });
+
+        test('removes the user\'s data too, including lists shared with others', async ({api, peerApi, seed, qaUser, peerUser}) => {
+            const list = await seed.wishlist();
+            await seed.wishItem(list.id);
+            expectStatus(await api.wishlists.share(list.id, {sharedWithUsername: peerUser.username}), 201);
+
+            expectStatus(await api.user.deleteAccount(qaUser.password), 204);
+
+            const peerLists = expectContract(await peerApi.wishlists.list(), 200, z.array(WishListEntry));
+            expect(peerLists.map(l => l.id)).not.toContain(list.id);
+            expectStatus(await peerApi.wishlists.items(list.id), 404);
         });
     });
 });

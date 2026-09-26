@@ -37,6 +37,10 @@ export class UserApi extends BaseApi {
     changePassword(body: {registrationCode: string; newPassword: string}) {
         return this.send('PUT', '/api/user/password', {data: body});
     }
+
+    deleteAccount(password?: string) {
+        return this.send('DELETE', '/api/users/me', {data: {password}});
+    }
 }
 
 export interface TaskInput {

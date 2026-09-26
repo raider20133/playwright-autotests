@@ -5,13 +5,12 @@ import {build, uid} from '@src/data/builders';
 import {WishListItem} from '@src/schemas';
 
 test.describe('Wish list', {tag: '@ui'}, () => {
-    test('a new wish list gets its own tab', {tag: '@smoke'}, async ({app, wishlistPage, api}) => {
+    test('a new wish list gets its own tab', {tag: '@smoke'}, async ({app, wishlistPage}) => {
         await app.open('wishlist');
         const name = build.wishlistName();
         const list = await wishlistPage.addWishlist(name);
 
         await expect(wishlistPage.tab(list.id)).toContainText(name);
-        await api.wishlists.remove(list.id);
     });
 
     test('a paid item shows its amount and is saved', async ({app, wishlistPage, seed, api}) => {
