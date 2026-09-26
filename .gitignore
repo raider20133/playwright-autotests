@@ -7,3 +7,4 @@ node_modules/
 /allure-report/
 /blob-report/
 /playwright-screenshots/
+/.qa-users.log

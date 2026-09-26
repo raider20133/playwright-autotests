@@ -12,6 +12,7 @@ export default defineConfig({
     timeout: 45_000,
     expect: {timeout: 8_000},
     globalSetup: './src/setup/global-setup.ts',
+    globalTeardown: './src/setup/global-teardown.ts',
     reporter: [
         ['list'],
         ['html', {open: 'never'}],

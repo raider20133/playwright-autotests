@@ -59,6 +59,16 @@ jobs:
       - name: Run tests
         run: npx playwright test --project=${{ matrix.project }}
 
+      # A cancelled job kills tests before their teardown; delete the users they created
+      - name: Delete QA users left behind
+        if: cancelled() || failure()
+        run: node scripts/sweep-qa-users.mjs
+
+      # A cancelled job kills tests before their teardown; delete the users they created
+      - name: Delete QA users left behind
+        if: cancelled() || failure()
+        run: node scripts/sweep-qa-users.mjs
+
       - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4

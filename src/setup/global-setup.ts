@@ -1,5 +1,8 @@
 import {request} from '@playwright/test';
 import {env} from '../config/env';
+// @ts-expect-error plain JS helper shared with the CI cleanup step
+import {leakedUsers, sweep, REGISTRY} from '../../scripts/sweep-qa-users.mjs';
+import {rmSync} from 'node:fs';
 
 /**
  * Render's free tier sleeps idle services; the first request can take ~50 s.
@@ -22,6 +25,10 @@ export default async function globalSetup(): Promise<void> {
         if (probe.status() !== 401) {
             throw new Error(`DELETE /api/users/me answered ${probe.status()} instead of 401: deploy the server with the account deletion endpoint first`);
         }
+
+        // Users left by a previous run that was killed before its teardown
+        await sweep(leakedUsers(), {api: env.apiUrl, code: env.registrationCode});
+        rmSync(REGISTRY, {force: true});
     } finally {
         await context.dispose();
     }
