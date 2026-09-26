@@ -1,50 +1,35 @@
-import {defineConfig} from '@playwright/test';
-import * as dotenv from 'dotenv';
+import {defineConfig, devices} from '@playwright/test';
+import {env} from './src/config/env';
 
-dotenv.config({override: true});
-
-export const baseURL: string = process.env.BASE_URL;
-export const API_BASE_URL: string = process.env.API_BASE_URL;
-export const USER: string = process.env.USER
-export const PASSWORD: string = process.env.PASSWORD
-export const SECRET_PASSWORD: string = process.env.SECRET_PASSWORD
+const isCI = !!process.env.CI;
 
 export default defineConfig({
-    testDir: './tests',
-    outputDir: './playwright-screenshots',
-    timeout: 10 * 3000,
-    expect: {timeout: 5000},
-    reporter: [['list'], ['html'], ['allure-playwright']],
-
-    // Common settings for all projects
+    fullyParallel: true,
+    forbidOnly: isCI,
+    retries: isCI ? 1 : 0,
+    // Kept low on purpose: the app runs on Render's free tier
+    workers: 3,
+    timeout: 45_000,
+    expect: {timeout: 8_000},
+    globalSetup: './src/setup/global-setup.ts',
+    reporter: [
+        ['list'],
+        ['html', {open: 'never'}],
+        ['allure-playwright', {resultsDir: 'allure-results'}],
+        ...(isCI ? [['github'] as ['github']] : []),
+    ],
     use: {
-        baseURL: baseURL,
-        headless: true,
+        baseURL: env.appUrl,
+        locale: 'en-GB',
+        timezoneId: 'UTC',
+        trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
-        trace: 'on-first-retry',
+        video: 'retain-on-failure',
     },
-    globalTeardown: './tests/support/globalTeardown/globalTeardown.ts',
-
-    // Configure projects for major browsers
     projects: [
-        {
-            name: 'chromium',
-            use: {
-                browserName: 'chromium',
-            },
-        },
-        {
-            name: 'firefox',
-            use: {
-                browserName: 'firefox',
-            },
-        },
-        {
-            name: 'webkit',
-            use: {
-                browserName: 'webkit',
-            },
-        }
+        {name: 'api', testDir: './tests/api'},
+        {name: 'chromium', testDir: './tests/ui', use: {...devices['Desktop Chrome']}},
+        {name: 'firefox', testDir: './tests/ui', use: {...devices['Desktop Firefox']}},
+        {name: 'webkit', testDir: './tests/ui', use: {...devices['Desktop Safari']}},
     ],
 });
-
