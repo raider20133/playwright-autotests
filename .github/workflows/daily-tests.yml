@@ -31,7 +31,9 @@ jobs:
   tests:
     name: Tests (${{ matrix.project }})
     needs: quality
-    runs-on: ubuntu-latest
+    # Pinned: on ubuntu-26.04 (ubuntu-latest since 2026-10-30) WebKit fails to launch
+    # with missing libicu*.so.74 / libxml2.so.2
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -45,12 +47,16 @@ jobs:
           cache: npm
       - run: npm ci
 
+      - name: Expose runner image for the cache key
+        if: matrix.project != 'api'
+        run: echo "RUNNER_IMAGE=$ImageOS" >> "$GITHUB_ENV"
       - name: Cache Playwright browsers
         if: matrix.project != 'api'
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-pw-${{ matrix.project }}-${{ hashFiles('package-lock.json') }}
+          # ImageOS in the key: browser builds are OS-specific, never restore one built for another Ubuntu
+          key: ${{ runner.os }}-${{ env.RUNNER_IMAGE }}-pw-${{ matrix.project }}-${{ hashFiles('package-lock.json') }}
       - name: Install ${{ matrix.project }}
         if: matrix.project != 'api'
         run: npx playwright install --with-deps ${{ matrix.project }}
@@ -58,11 +64,6 @@ jobs:
       # No "|| true": a failing test fails the job. Reporting steps below still run.
       - name: Run tests
         run: npx playwright test --project=${{ matrix.project }}
-
-      # A cancelled job kills tests before their teardown; delete the users they created
-      - name: Delete QA users left behind
-        if: cancelled() || failure()
-        run: node scripts/sweep-qa-users.mjs
 
       # A cancelled job kills tests before their teardown; delete the users they created
       - name: Delete QA users left behind
